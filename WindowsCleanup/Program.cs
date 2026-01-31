@@ -11262,17 +11262,17 @@ class WindowsCleanupTool
 
         try
         {
-            // Folders to delete from Documents directories
-            var foldersToDelete = new[]
+            // Exact folder names to delete from Documents directories
+            var exactFoldersToDelete = new[]
             {
                 "Custom Office Templates",
-                "PowerShell",
-                "Visual Studio 2015",
-                "Visual Studio 2017",
-                "Visual Studio 2018",
-                "Visual Studio 2019",
-                "Visual Studio 2022",
-                "Visual Studio 2025"
+                "PowerShell"
+            };
+
+            // Folder prefixes to match (for versions like "Visual Studio 18", "Visual Studio 2022", etc.)
+            var folderPrefixesToDelete = new[]
+            {
+                "Visual Studio"
             };
 
             // Get all user directories
@@ -11316,11 +11316,43 @@ class WindowsCleanupTool
                         if (!Directory.Exists(documentsPath))
                             continue;
 
-                        foreach (var folderName in foldersToDelete)
+                        // Get all folders in Documents
+                        try
                         {
-                            var folderPath = Path.Combine(documentsPath, folderName);
-                            if (Directory.Exists(folderPath))
+                            var allFolders = Directory.GetDirectories(documentsPath);
+                            
+                            foreach (var folderPath in allFolders)
                             {
+                                var folderName = Path.GetFileName(folderPath);
+                                
+                                // Check if this folder should be deleted (exact match)
+                                bool shouldDelete = false;
+                                foreach (var exactFolder in exactFoldersToDelete)
+                                {
+                                    if (folderName.Equals(exactFolder, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        shouldDelete = true;
+                                        break;
+                                    }
+                                }
+                                
+                                // Check if this folder should be deleted (prefix match)
+                                if (!shouldDelete)
+                                {
+                                    foreach (var prefix in folderPrefixesToDelete)
+                                    {
+                                        if (folderName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            shouldDelete = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // Only delete if it matches our specific criteria
+                                if (!shouldDelete)
+                                    continue;
+
                                 try
                                 {
                                     var size = GetDirectorySize(folderPath);
@@ -11346,6 +11378,12 @@ class WindowsCleanupTool
                                     Console.ResetColor();
                                 }
                             }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.WriteLine($"  ⚠️ Could not enumerate folders in {documentsPath}: {ex.Message}");
+                            Console.ResetColor();
                         }
                     }
                 }

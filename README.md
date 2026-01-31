@@ -41,6 +41,13 @@ A comprehensive C# .NET console application that performs extensive Windows syst
 - ✅ Scoop package manager cache (downloaded installers)
 - ✅ WinGet logs and diagnostic files
 
+### 📁 Documents Folder Cleanup
+- ✅ PowerShell folder
+- ✅ Visual Studio project folders
+- ✅ Custom Office Templates folder
+
+**Note:** Only these specific folders are removed from Documents. All other folders and user data remain completely untouched.
+
 ### 🌐 Browser Data (Auto-detected)
 **Supported Browsers:**
 - 🔷 Microsoft Edge (Stable, Dev, Beta, Canary/Insider)
