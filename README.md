@@ -338,7 +338,7 @@ dotnet publish -c Release -r win-arm64 --self-contained
 dotnet publish -c Release -r win-x64 --self-contained
 ```
 
-This creates highly optimized executables (~2.6 MB each):
+This creates highly optimized executables (~2.7-2.8 MB each):
 - `WindowsCleanup\bin\Release\net10.0\win-arm64\publish\WindowsCleanup.exe`
 - `WindowsCleanup\bin\Release\net10.0\win-x64\publish\WindowsCleanup.exe`
 
@@ -441,7 +441,7 @@ D:\cleanup\
 ├── README.md                       # This file
 ├── LICENSE                         # MIT License
 └── WindowsCleanup\
-    ├── Program.cs                 # Main application code (~12,000 lines)
+    ├── Program.cs                 # Main application code (~14,600 lines)
     └── WindowsCleanup.csproj      # Project file with AOT config
 ```
 

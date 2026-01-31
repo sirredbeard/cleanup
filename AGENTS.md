@@ -98,7 +98,7 @@ Copy-Item "WindowsCleanup\bin\Release\net10.0\win-x64\publish\WindowsCleanup.exe
 
 ### Pre-Release Checklist
 1. ✅ All code changes committed
-2. ✅ README.md updated with new features
+2. ✅ README.md updated with new features and current statistics (no version-specific annotations)
 3. ✅ Build both ARM64 and x64 binaries
 4. ✅ Test binaries with `--dry-run` mode
 5. ✅ Squash commits if needed
@@ -331,13 +331,21 @@ cd WindowsCleanup\bin\Release\net10.0\win-arm64\publish
 
 ### README.md Updates
 
-**ALWAYS update README.md when adding features:**
+**ALWAYS update README.md with each new version:**
 
 1. **Update feature lists** - Add new applications, browsers, registry traces
-2. **Update statistics** - Lines of code, app count, browser count
+2. **Update statistics** - Lines of code, app count, browser count, binary sizes
 3. **Update "What Gets Cleared"** - Categorize new cleanup targets
 4. **Update "What's NOT Cleared"** - If authentication preserved
 5. **Use consistent emoji** - Match the emoji used in code
+6. **Update line counts** - Reflect actual Program.cs line count in project structure section
+7. **Update binary sizes** - Reflect actual compiled sizes in build instructions
+
+**IMPORTANT: Do NOT mention specific version numbers in README.md**
+- README.md should be version-agnostic, describing current features
+- Do NOT add "New in v0.0.X" or "v0.0.X -" annotations
+- Version history belongs in GitHub releases only
+- Keep README focused on what the tool does now, not when features were added
 
 **README.md sections to update:**
 ```markdown
@@ -346,7 +354,7 @@ cd WindowsCleanup\bin\Release\net10.0\win-arm64\publish
 ### 👤 User Activity & Recent History
 ### 🌐 Browser Data (Auto-detected)
 ### 🛠️ Development Tools & Caches
-### 🎨 Creative & Productivity Apps  (NEW in v0.0.5)
+### 🎨 Creative & Productivity Apps
 ### 📦 Virtualization & Containers
 ### 🎮 Graphics & Drivers
 ### 🌍 Network & Connectivity

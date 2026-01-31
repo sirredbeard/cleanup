@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.ServiceProcess;
 using Microsoft.Win32;
@@ -124,8 +125,6 @@ class WindowsCleanupTool
             ClearCopilotHistory();
             ClearVSCodeCopilotCache();
             ClearCopilotPlusCache();
-            ClearVisualStudioCache();
-            ClearCloudflareWarp();
             ClearWindowsFeatures();
             ClearNetworkHistory();
             ClearApplicationCaches();
@@ -133,13 +132,10 @@ class WindowsCleanupTool
             ClearEmbeddedWebViews();
             ClearAllDetectedAppData();
             ClearSpecificInstalledApps();
-            ClearPowerToys();
             ClearPrismCache();
             ClearDevelopmentToolCaches();
             ClearProgrammingLanguageCaches();
             ClearHyperVLogs();
-            ClearVirtualBoxData();
-            ClearVMwareData();
             ClearDeliveryOptimizationCache();
             ClearEventLogs();
             ClearGraphicsDriverCaches();
@@ -1379,7 +1375,7 @@ class WindowsCleanupTool
                 var getUsersCmd = new ProcessStartInfo
                 {
                     FileName = "wsl",
-                    Arguments = $"-d {distro} --user root bash -c \"cut -d: -f1,6 /etc/passwd | grep -E '/home/'\"",
+                    Arguments = $"-d {distro} --user root bash -c \"cut -d: -f1,6 /etc/passwd\"",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
@@ -1404,7 +1400,21 @@ class WindowsCleanupTool
                                 var parts = userLine.Split(':');
                                 if (parts.Length == 2)
                                 {
-                                    users.Add((parts[0].Trim(), parts[1].Trim()));
+                                    var username = parts[0].Trim();
+                                    var homedir = parts[1].Trim();
+                                    
+                                    // Include users with actual home directories (not system users with / or /usr/bin/false etc)
+                                    if (!string.IsNullOrEmpty(homedir) && 
+                                        !homedir.Equals("/") &&
+                                        !homedir.StartsWith("/usr/sbin") &&
+                                        !homedir.StartsWith("/usr/bin") &&
+                                        !homedir.StartsWith("/sbin") &&
+                                        !homedir.StartsWith("/bin") &&
+                                        !homedir.Equals("/dev/null") &&
+                                        !homedir.Equals("/nonexistent"))
+                                    {
+                                        users.Add((username, homedir));
+                                    }
                                 }
                             }
                         }
@@ -1414,12 +1424,10 @@ class WindowsCleanupTool
 
                 if (users.Count == 0)
                 {
-                    // Fallback to default user
+                    // Fallback to default user and root
                     users.Add(("default", "~"));
+                    users.Add(("root", "/root"));
                 }
-                
-                // ALWAYS include root user (home directory is /root, not /home/root)
-                users.Add(("root", "/root"));
 
                 Console.WriteLine($"    Found {users.Count} user(s) in {distro} (including root)");
 
@@ -2454,204 +2462,6 @@ class WindowsCleanupTool
         }
     }
 
-    static void ClearVisualStudioCache()
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n🔹 Clearing Visual Studio cache and logs...");
-        Console.ResetColor();
-
-        long freedSpace = 0;
-        int clearedCount = 0;
-
-        try
-        {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var tempPath = Path.GetTempPath();
-
-            // Visual Studio versions to check (2025, 2022, 2019, 2017, etc.)
-            var vsVersions = new[] { "2025", "2022", "2019", "2017", "2015", "2013" };
-            var vsEditions = new[] { "Enterprise", "Professional", "Community", "Preview", "BuildTools" };
-
-            foreach (var version in vsVersions)
-            {
-                foreach (var edition in vsEditions)
-                {
-                    var vsName = $"Visual Studio {version} {edition}";
-                    
-                    // Check if this VS version exists
-                    var vsAppDataPath = Path.Combine(localAppData, "Microsoft", "VisualStudio");
-                    if (!Directory.Exists(vsAppDataPath))
-                        continue;
-
-                    // Clear Component Model Cache (MEF cache)
-                    var componentModelCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "ComponentModelCache");
-                    ClearDirectoryPattern(componentModelCache, ref clearedCount, ref freedSpace);
-
-                    // Clear Designer cache
-                    var designerCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Designer", "ShadowCache");
-                    ClearDirectoryPattern(designerCache, ref clearedCount, ref freedSpace);
-
-                    // Clear Code Analysis cache
-                    var codeAnalysisCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Cache");
-                    ClearDirectoryPattern(codeAnalysisCache, ref clearedCount, ref freedSpace);
-
-                    // Clear Telemetry data
-                    var telemetryPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Telemetry");
-                    ClearDirectoryPattern(telemetryPath, ref clearedCount, ref freedSpace);
-
-                    // Clear crash dumps and diagnostics
-                    var diagnosticsPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "CrashDumps");
-                    ClearDirectoryPattern(diagnosticsPath, ref clearedCount, ref freedSpace);
-
-                    var logsPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Logs");
-                    ClearDirectoryPattern(logsPath, ref clearedCount, ref freedSpace);
-
-                    // Clear temp files
-                    var vsTempPath = Path.Combine(localAppData, "Temp", $"VS*{version}*");
-                    ClearDirectoryPattern(vsTempPath, ref clearedCount, ref freedSpace);
-                }
-            }
-
-            // Clear .NET temporary ASP.NET files (all versions)
-            var aspNetTempPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), 
-                "Microsoft.NET", "Framework*", "v*", "Temporary ASP.NET Files");
-            ClearDirectoryPattern(aspNetTempPath, ref clearedCount, ref freedSpace);
-
-            // Clear MSBuild logs
-            var msbuildLogPath = Path.Combine(localAppData, "Microsoft", "MSBuild", "*", "Logs");
-            ClearDirectoryPattern(msbuildLogPath, ref clearedCount, ref freedSpace);
-
-            // Clear Test Results (common locations)
-            var testResultsPaths = new[]
-            {
-                Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "TestResults"),
-                Path.Combine(tempPath, "TestResults")
-            };
-            foreach (var path in testResultsPaths)
-            {
-                ClearDirectoryPattern(path, ref clearedCount, ref freedSpace);
-            }
-
-            // Clear Visual Studio Code coverage data
-            var coveragePath = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "Coverage");
-            ClearDirectoryPattern(coveragePath, ref clearedCount, ref freedSpace);
-
-            // Clear IntelliTrace logs
-            var intelliTracePath = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "IntelliTrace");
-            ClearDirectoryPattern(intelliTracePath, ref clearedCount, ref freedSpace);
-
-            // Clear Visual Studio extensions temp files
-            var extensionsTempPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "Extensions", ".temp");
-            ClearDirectoryPattern(extensionsTempPath, ref clearedCount, ref freedSpace);
-
-            // Clear NuGet HTTP cache (but preserve packages cache as it's shared)
-            var nugetHttpCache = Path.Combine(localAppData, "NuGet", "v3-cache");
-            if (Directory.Exists(nugetHttpCache))
-            {
-                try
-                {
-                    var size = GetDirectorySize(nugetHttpCache);
-                    if (!_dryRun)
-                    {
-                        Directory.Delete(nugetHttpCache, true);
-                    }
-                    freedSpace += size;
-                    clearedCount++;
-                    if (_dryRun)
-                    {
-                        LogDryRun($"Would delete: {nugetHttpCache} ({FormatBytes(size)})");
-                    }
-                }
-                catch { }
-            }
-
-            // Clear Roslyn compiler cache
-            var roslynCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "Roslyn", "Cache");
-            ClearDirectoryPattern(roslynCache, ref clearedCount, ref freedSpace);
-
-            // Clear Xamarin logs and cache
-            var xamarinLogs = Path.Combine(localAppData, "Xamarin", "Logs");
-            if (Directory.Exists(xamarinLogs))
-            {
-                try
-                {
-                    var size = GetDirectorySize(xamarinLogs);
-                    if (!_dryRun)
-                    {
-                        Directory.Delete(xamarinLogs, true);
-                    }
-                    freedSpace += size;
-                    clearedCount++;
-                    if (_dryRun)
-                    {
-                        LogDryRun($"Would delete: {xamarinLogs} ({FormatBytes(size)})");
-                    }
-                }
-                catch { }
-            }
-
-            // Clear Visual Studio Installer logs
-            var vsInstallerLogs = Path.Combine(tempPath, "VSInstallerLogs");
-            if (Directory.Exists(vsInstallerLogs))
-            {
-                try
-                {
-                    var size = GetDirectorySize(vsInstallerLogs);
-                    if (!_dryRun)
-                    {
-                        Directory.Delete(vsInstallerLogs, true);
-                    }
-                    freedSpace += size;
-                    clearedCount++;
-                    if (_dryRun)
-                    {
-                        LogDryRun($"Would delete: {vsInstallerLogs} ({FormatBytes(size)})");
-                    }
-                }
-                catch { }
-            }
-
-            // Clear dd_setup logs (Visual Studio setup)
-            var setupLogs = Directory.GetFiles(tempPath, "dd_setup_*.log", SearchOption.TopDirectoryOnly);
-            foreach (var log in setupLogs)
-            {
-                try
-                {
-                    var fi = new FileInfo(log);
-                    freedSpace += fi.Length;
-                    if (!_dryRun)
-                    {
-                        fi.Delete();
-                    }
-                    clearedCount++;
-                    if (_dryRun)
-                    {
-                        LogDryRun($"Would delete: {log} ({FormatBytes(fi.Length)})");
-                    }
-                }
-                catch { }
-            }
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            if (_dryRun)
-            {
-                Console.WriteLine($"  ✅ Would clear {clearedCount} Visual Studio cache/log items ({FormatBytes(freedSpace)} freed)");
-            }
-            else
-            {
-                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Visual Studio cache/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
-            }
-            Console.ResetColor();
-        }
-        catch (Exception ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ❌ Failed: {ex.Message}");
-            Console.ResetColor();
-        }
-    }
-
     // Helper function to clear directories matching a wildcard pattern
     static void ClearDirectoryPattern(string pattern, ref int clearedCount, ref long freedSpace)
     {
@@ -2714,125 +2524,6 @@ class WindowsCleanupTool
             }
         }
         catch { }
-    }
-
-    static void ClearCloudflareWarp()
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n🔹 Clearing Cloudflare WARP data...");
-        Console.ResetColor();
-
-        long freedSpace = 0;
-        int clearedCount = 0;
-
-        try
-        {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var programData = Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData";
-
-            var warpPaths = new[]
-            {
-                Path.Combine(localAppData, "Cloudflare"),
-                Path.Combine(programData, "Cloudflare")
-            };
-
-            bool foundWarp = false;
-
-            foreach (var warpBasePath in warpPaths)
-            {
-                if (!Directory.Exists(warpBasePath))
-                    continue;
-
-                foundWarp = true;
-
-                // Clear logs
-                var logsPath = Path.Combine(warpBasePath, "logs");
-                if (Directory.Exists(logsPath))
-                {
-                    try
-                    {
-                        var size = GetDirectorySize(logsPath);
-                        Directory.Delete(logsPath, true);
-                        Directory.CreateDirectory(logsPath);
-                        freedSpace += size;
-                        clearedCount++;
-                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP logs");
-                    }
-                    catch { }
-                }
-
-                // Clear cache
-                var cachePath = Path.Combine(warpBasePath, "cache");
-                if (Directory.Exists(cachePath))
-                {
-                    try
-                    {
-                        var size = GetDirectorySize(cachePath);
-                        Directory.Delete(cachePath, true);
-                        Directory.CreateDirectory(cachePath);
-                        freedSpace += size;
-                        clearedCount++;
-                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP cache");
-                    }
-                    catch { }
-                }
-
-                // Clear crash reports
-                var crashPath = Path.Combine(warpBasePath, "crashes");
-                if (Directory.Exists(crashPath))
-                {
-                    try
-                    {
-                        var size = GetDirectorySize(crashPath);
-                        Directory.Delete(crashPath, true);
-                        freedSpace += size;
-                        clearedCount++;
-                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP crash reports");
-                    }
-                    catch { }
-                }
-
-                // Clear diagnostics
-                var diagPath = Path.Combine(warpBasePath, "diagnostics");
-                if (Directory.Exists(diagPath))
-                {
-                    try
-                    {
-                        var size = GetDirectorySize(diagPath);
-                        Directory.Delete(diagPath, true);
-                        freedSpace += size;
-                        clearedCount++;
-                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP diagnostics");
-                    }
-                    catch { }
-                }
-            }
-
-            if (foundWarp && clearedCount > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} WARP data items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
-                Console.ResetColor();
-            }
-            else if (!foundWarp)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠️ Cloudflare WARP not detected");
-                Console.ResetColor();
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠️ No WARP data to clear");
-                Console.ResetColor();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ❌ Failed: {ex.Message}");
-            Console.ResetColor();
-        }
     }
 
     static void ClearWindowsFeatures()
@@ -6756,6 +6447,647 @@ class WindowsCleanupTool
             }
             catch { }
 
+            // 🛠️ VISUAL STUDIO - Cache and logs
+            Console.WriteLine("  Cleaning Visual Studio...");
+            try
+            {
+                var tempPath = Path.GetTempPath();
+
+                // Visual Studio versions to check (2025, 2022, 2019, 2017, etc.)
+                var vsVersions = new[] { "2025", "2022", "2019", "2017", "2015", "2013" };
+                var vsEditions = new[] { "Enterprise", "Professional", "Community", "Preview", "BuildTools" };
+
+                foreach (var version in vsVersions)
+                {
+                    foreach (var edition in vsEditions)
+                    {
+                        var vsName = $"Visual Studio {version} {edition}";
+                        
+                        // Check if this VS version exists
+                        var vsAppDataPath = Path.Combine(localAppData, "Microsoft", "VisualStudio");
+                        if (!Directory.Exists(vsAppDataPath))
+                            continue;
+
+                        // Clear Component Model Cache (MEF cache)
+                        var componentModelCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "ComponentModelCache");
+                        ClearDirectoryPattern(componentModelCache, ref clearedCount, ref freedSpace);
+
+                        // Clear Designer cache
+                        var designerCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Designer", "ShadowCache");
+                        ClearDirectoryPattern(designerCache, ref clearedCount, ref freedSpace);
+
+                        // Clear Code Analysis cache
+                        var codeAnalysisCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Cache");
+                        ClearDirectoryPattern(codeAnalysisCache, ref clearedCount, ref freedSpace);
+
+                        // Clear Telemetry data
+                        var telemetryPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Telemetry");
+                        ClearDirectoryPattern(telemetryPath, ref clearedCount, ref freedSpace);
+
+                        // Clear crash dumps and diagnostics
+                        var diagnosticsPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "CrashDumps");
+                        ClearDirectoryPattern(diagnosticsPath, ref clearedCount, ref freedSpace);
+
+                        var logsPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", $"*{version}*", "Logs");
+                        ClearDirectoryPattern(logsPath, ref clearedCount, ref freedSpace);
+
+                        // Clear temp files
+                        var vsTempPath = Path.Combine(localAppData, "Temp", $"VS*{version}*");
+                        ClearDirectoryPattern(vsTempPath, ref clearedCount, ref freedSpace);
+                    }
+                }
+
+                // Clear .NET temporary ASP.NET files (all versions)
+                var aspNetTempPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), 
+                    "Microsoft.NET", "Framework*", "v*", "Temporary ASP.NET Files");
+                ClearDirectoryPattern(aspNetTempPath, ref clearedCount, ref freedSpace);
+
+                // Clear MSBuild logs
+                var msbuildLogPath = Path.Combine(localAppData, "Microsoft", "MSBuild", "*", "Logs");
+                ClearDirectoryPattern(msbuildLogPath, ref clearedCount, ref freedSpace);
+
+                // Clear Test Results (common locations)
+                var testResultsPaths = new[]
+                {
+                    Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "TestResults"),
+                    Path.Combine(tempPath, "TestResults")
+                };
+                foreach (var path in testResultsPaths)
+                {
+                    ClearDirectoryPattern(path, ref clearedCount, ref freedSpace);
+                }
+
+                // Clear Visual Studio Code coverage data
+                var coveragePath = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "Coverage");
+                ClearDirectoryPattern(coveragePath, ref clearedCount, ref freedSpace);
+
+                // Clear IntelliTrace logs
+                var intelliTracePath = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "IntelliTrace");
+                ClearDirectoryPattern(intelliTracePath, ref clearedCount, ref freedSpace);
+
+                // Clear Visual Studio extensions temp files
+                var extensionsTempPath = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "Extensions", ".temp");
+                ClearDirectoryPattern(extensionsTempPath, ref clearedCount, ref freedSpace);
+
+                // Clear NuGet HTTP cache (but preserve packages cache as it's shared)
+                var nugetHttpCache = Path.Combine(localAppData, "NuGet", "v3-cache");
+                if (Directory.Exists(nugetHttpCache))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(nugetHttpCache);
+                        if (!_dryRun)
+                        {
+                            Directory.Delete(nugetHttpCache, true);
+                        }
+                        freedSpace += size;
+                        clearedCount++;
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {nugetHttpCache} ({FormatBytes(size)})");
+                        }
+                    }
+                    catch { }
+                }
+
+                // Clear Roslyn compiler cache
+                var roslynCache = Path.Combine(localAppData, "Microsoft", "VisualStudio", "*", "Roslyn", "Cache");
+                ClearDirectoryPattern(roslynCache, ref clearedCount, ref freedSpace);
+
+                // Clear Xamarin logs and cache
+                var xamarinLogs = Path.Combine(localAppData, "Xamarin", "Logs");
+                if (Directory.Exists(xamarinLogs))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(xamarinLogs);
+                        if (!_dryRun)
+                        {
+                            Directory.Delete(xamarinLogs, true);
+                        }
+                        freedSpace += size;
+                        clearedCount++;
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {xamarinLogs} ({FormatBytes(size)})");
+                        }
+                    }
+                    catch { }
+                }
+
+                // Clear Visual Studio Installer logs
+                var vsInstallerLogs = Path.Combine(tempPath, "VSInstallerLogs");
+                if (Directory.Exists(vsInstallerLogs))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(vsInstallerLogs);
+                        if (!_dryRun)
+                        {
+                            Directory.Delete(vsInstallerLogs, true);
+                        }
+                        freedSpace += size;
+                        clearedCount++;
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {vsInstallerLogs} ({FormatBytes(size)})");
+                        }
+                    }
+                    catch { }
+                }
+
+                // Clear dd_setup logs (Visual Studio setup)
+                var setupLogs = Directory.GetFiles(tempPath, "dd_setup_*.log", SearchOption.TopDirectoryOnly);
+                foreach (var log in setupLogs)
+                {
+                    try
+                    {
+                        var fi = new FileInfo(log);
+                        freedSpace += fi.Length;
+                        if (!_dryRun)
+                        {
+                            fi.Delete();
+                        }
+                        clearedCount++;
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {log} ({FormatBytes(fi.Length)})");
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            // ☁️ CLOUDFLARE WARP - Logs and caches
+            Console.WriteLine("  Cleaning Cloudflare WARP...");
+            try
+            {
+                var warpPaths = new[]
+                {
+                    Path.Combine(localAppData, "Cloudflare"),
+                    Path.Combine(programData, "Cloudflare")
+                };
+
+                bool foundWarp = false;
+
+                foreach (var warpBasePath in warpPaths)
+                {
+                    if (!Directory.Exists(warpBasePath))
+                        continue;
+
+                    foundWarp = true;
+
+                    // Clear logs
+                    var logsPath = Path.Combine(warpBasePath, "logs");
+                    if (Directory.Exists(logsPath))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(logsPath);
+                            if (!_dryRun)
+                            {
+                                Directory.Delete(logsPath, true);
+                                Directory.CreateDirectory(logsPath);
+                            }
+                            else
+                            {
+                                LogDryRun($"Would delete directory: {logsPath} ({FormatBytes(size)})");
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+
+                    // Clear cache
+                    var cachePath = Path.Combine(warpBasePath, "cache");
+                    if (Directory.Exists(cachePath))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(cachePath);
+                            if (!_dryRun)
+                            {
+                                Directory.Delete(cachePath, true);
+                                Directory.CreateDirectory(cachePath);
+                            }
+                            else
+                            {
+                                LogDryRun($"Would delete directory: {cachePath} ({FormatBytes(size)})");
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+
+                    // Clear crash reports
+                    var crashPath = Path.Combine(warpBasePath, "crashes");
+                    if (Directory.Exists(crashPath))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(crashPath);
+                            if (!_dryRun)
+                            {
+                                Directory.Delete(crashPath, true);
+                            }
+                            else
+                            {
+                                LogDryRun($"Would delete directory: {crashPath} ({FormatBytes(size)})");
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+
+                    // Clear diagnostics
+                    var diagPath = Path.Combine(warpBasePath, "diagnostics");
+                    if (Directory.Exists(diagPath))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(diagPath);
+                            if (!_dryRun)
+                            {
+                                Directory.Delete(diagPath, true);
+                            }
+                            else
+                            {
+                                LogDryRun($"Would delete directory: {diagPath} ({FormatBytes(size)})");
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // 🔧 POWERTOYS - Logs and caches
+            Console.WriteLine("  Cleaning PowerToys...");
+            try
+            {
+                // PowerToys main directories
+                var powerToysBasePaths = new[]
+                {
+                    Path.Combine(localAppData, "Microsoft", "PowerToys"),
+                    Path.Combine(programData, "Microsoft", "PowerToys")
+                };
+
+                bool foundAny = false;
+                foreach (var basePath in powerToysBasePaths)
+                {
+                    if (!Directory.Exists(basePath))
+                        continue;
+
+                    foundAny = true;
+
+                    // Clear logs for all PowerToys modules
+                    var logPaths = new[]
+                    {
+                        Path.Combine(basePath, "Logs"),
+                        Path.Combine(basePath, "FancyZones", "Logs"),
+                        Path.Combine(basePath, "PowerRename", "Logs"),
+                        Path.Combine(basePath, "ImageResizer", "Logs"),
+                        Path.Combine(basePath, "KeyboardManager", "Logs"),
+                        Path.Combine(basePath, "PowerLauncher", "Logs"),
+                        Path.Combine(basePath, "ColorPicker", "Logs"),
+                        Path.Combine(basePath, "ShortcutGuide", "Logs"),
+                        Path.Combine(basePath, "FileLocksmith", "Logs"),
+                        Path.Combine(basePath, "Awake", "Logs"),
+                        Path.Combine(basePath, "PowerAccent", "Logs"),
+                        Path.Combine(basePath, "PowerOCR", "Logs"),
+                        Path.Combine(basePath, "MouseUtils", "Logs"),
+                        Path.Combine(basePath, "Peek", "Logs"),
+                        Path.Combine(basePath, "RegistryPreview", "Logs"),
+                        Path.Combine(basePath, "CropAndLock", "Logs"),
+                        Path.Combine(basePath, "EnvironmentVariables", "Logs"),
+                        Path.Combine(basePath, "Hosts", "Logs"),
+                        Path.Combine(basePath, "MeasureTool", "Logs"),
+                        Path.Combine(basePath, "PowerToys Run", "Logs"),
+                    };
+
+                    foreach (var logPath in logPaths)
+                    {
+                        if (Directory.Exists(logPath))
+                        {
+                            try
+                            {
+                                var files = Directory.GetFiles(logPath, "*.*", SearchOption.AllDirectories);
+                                foreach (var file in files)
+                                {
+                                    try
+                                    {
+                                        if (_dryRun)
+                                        {
+                                            var fileInfo = new FileInfo(file);
+                                            freedSpace += fileInfo.Length;
+                                            LogDryRun($"Would delete: {file} ({FormatBytes(fileInfo.Length)})");
+                                            clearedCount++;
+                                        }
+                                        else
+                                        {
+                                            var fileInfo = new FileInfo(file);
+                                            freedSpace += fileInfo.Length;
+                                            fileInfo.Delete();
+                                            clearedCount++;
+                                        }
+                                    }
+                                    catch { /* Skip files in use */ }
+                                }
+                            }
+                            catch { /* Skip if inaccessible */ }
+                        }
+                    }
+
+                    // Clear PowerToys cache directories
+                    var cachePaths = new[]
+                    {
+                        Path.Combine(basePath, "Cache"),
+                        Path.Combine(basePath, "PowerLauncher", "Cache"),
+                        Path.Combine(basePath, "PowerToys Run", "Cache"),
+                        Path.Combine(basePath, "Peek", "Cache"),
+                    };
+
+                    foreach (var cachePath in cachePaths)
+                    {
+                        if (Directory.Exists(cachePath))
+                        {
+                            try
+                            {
+                                var files = Directory.GetFiles(cachePath, "*.*", SearchOption.AllDirectories);
+                                foreach (var file in files)
+                                {
+                                    try
+                                    {
+                                        if (_dryRun)
+                                        {
+                                            var fileInfo = new FileInfo(file);
+                                            freedSpace += fileInfo.Length;
+                                            LogDryRun($"Would delete: {file} ({FormatBytes(fileInfo.Length)})");
+                                            clearedCount++;
+                                        }
+                                        else
+                                        {
+                                            var fileInfo = new FileInfo(file);
+                                            freedSpace += fileInfo.Length;
+                                            fileInfo.Delete();
+                                            clearedCount++;
+                                        }
+                                    }
+                                    catch { /* Skip files in use */ }
+                                }
+
+                                if (!_dryRun)
+                                {
+                                    try { Directory.Delete(cachePath, true); } catch { }
+                                }
+                            }
+                            catch { /* Skip if inaccessible */ }
+                        }
+                    }
+
+                    // Clear temp files and crash dumps
+                    var tempPaths = new[]
+                    {
+                        Path.Combine(basePath, "Temp"),
+                        Path.Combine(basePath, "CrashDumps"),
+                    };
+
+                    foreach (var tempPath in tempPaths)
+                    {
+                        if (Directory.Exists(tempPath))
+                        {
+                            try
+                            {
+                                var files = Directory.GetFiles(tempPath, "*.*", SearchOption.AllDirectories);
+                                foreach (var file in files)
+                                {
+                                    try
+                                    {
+                                        if (_dryRun)
+                                        {
+                                            var fileInfo = new FileInfo(file);
+                                            freedSpace += fileInfo.Length;
+                                            LogDryRun($"Would delete: {file} ({FormatBytes(fileInfo.Length)})");
+                                            clearedCount++;
+                                        }
+                                        else
+                                        {
+                                            var fileInfo = new FileInfo(file);
+                                            freedSpace += fileInfo.Length;
+                                            fileInfo.Delete();
+                                            clearedCount++;
+                                        }
+                                    }
+                                    catch { /* Skip files in use */ }
+                                }
+
+                                if (!_dryRun)
+                                {
+                                    try { Directory.Delete(tempPath, true); } catch { }
+                                }
+                            }
+                            catch { /* Skip if inaccessible */ }
+                        }
+                    }
+
+                    // Clear settings backups (keep current settings)
+                    var backupPath = Path.Combine(basePath, "Backup");
+                    if (Directory.Exists(backupPath))
+                    {
+                        try
+                        {
+                            var files = Directory.GetFiles(backupPath, "*.*", SearchOption.AllDirectories);
+                            foreach (var file in files)
+                            {
+                                try
+                                {
+                                    // Keep the most recent backup, delete older ones
+                                    var fileInfo = new FileInfo(file);
+                                    if ((DateTime.Now - fileInfo.LastWriteTime).TotalDays > 7)
+                                    {
+                                        if (_dryRun)
+                                        {
+                                            freedSpace += fileInfo.Length;
+                                            LogDryRun($"Would delete old backup: {file} ({FormatBytes(fileInfo.Length)})");
+                                            clearedCount++;
+                                        }
+                                        else
+                                        {
+                                            freedSpace += fileInfo.Length;
+                                            fileInfo.Delete();
+                                            clearedCount++;
+                                        }
+                                    }
+                                }
+                                catch { /* Skip files in use */ }
+                            }
+                        }
+                        catch { /* Skip if inaccessible */ }
+                    }
+                }
+            }
+            catch { }
+
+            // 📦 VIRTUALBOX - Logs and caches
+            Console.WriteLine("  Cleaning VirtualBox...");
+            try
+            {
+                // VirtualBox paths
+                var vboxPaths = new List<string>
+                {
+                    Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log"),
+                    Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log.1"),
+                    Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log.2"),
+                    Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log.3"),
+                    Path.Combine(userProfile, "VirtualBox VMs")  // Log files in VM directories
+                };
+
+                // Add Program Files paths
+                var vboxInstallPath = @"C:\Program Files\Oracle\VirtualBox";
+                if (Directory.Exists(vboxInstallPath))
+                {
+                    vboxPaths.Add(Path.Combine(vboxInstallPath, "logs"));
+                }
+
+                foreach (var path in vboxPaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            var fi = new FileInfo(path);
+                            freedSpace += fi.Length;
+                            if (!_dryRun)
+                            {
+                                fi.Delete();
+                            }
+                            else
+                            {
+                                LogDryRun($"Would delete: {path} ({FormatBytes(fi.Length)})");
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        try
+                        {
+                            // Look for .log files in VM directories
+                            var logFiles = Directory.GetFiles(path, "*.log", SearchOption.AllDirectories);
+                            foreach (var logFile in logFiles)
+                            {
+                                try
+                                {
+                                    var fi = new FileInfo(logFile);
+                                    freedSpace += fi.Length;
+                                    if (!_dryRun)
+                                    {
+                                        fi.Delete();
+                                    }
+                                    else
+                                    {
+                                        LogDryRun($"Would delete: {logFile} ({FormatBytes(fi.Length)})");
+                                    }
+                                    clearedCount++;
+                                }
+                                catch { }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // 📦 VMWARE - Logs and caches
+            Console.WriteLine("  Cleaning VMware...");
+            try
+            {
+                var temp = Path.GetTempPath();
+
+                // VMware paths
+                var vmwarePaths = new[]
+                {
+                    Path.Combine(appData, "VMware"),
+                    Path.Combine(localAppData, "VMware"),
+                    Path.Combine(programData, "VMware"),
+                    Path.Combine(temp, "vmware-*")
+                };
+
+                // Specific items to clean (logs, caches, not configs or VMs)
+                var patterns = new[] { "*.log", "*.dmp", "vmware-*.log", "*.tmp" };
+
+                foreach (var basePath in vmwarePaths)
+                {
+                    if (basePath.Contains("*"))
+                    {
+                        // Handle wildcard paths (temp directories)
+                        var parentDir = Path.GetDirectoryName(basePath);
+                        if (Directory.Exists(parentDir))
+                        {
+                            var pattern = Path.GetFileName(basePath);
+                            var dirs = Directory.GetDirectories(parentDir, pattern);
+                            foreach (var dir in dirs)
+                            {
+                                try
+                                {
+                                    var size = GetDirectorySize(dir);
+                                    freedSpace += size;
+                                    if (!_dryRun)
+                                    {
+                                        Directory.Delete(dir, true);
+                                    }
+                                    else
+                                    {
+                                        LogDryRun($"Would delete: {dir} ({FormatBytes(size)})");
+                                    }
+                                    clearedCount++;
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    else if (Directory.Exists(basePath))
+                    {
+                        try
+                        {
+                            // Clean logs and temp files
+                            foreach (var pattern in patterns)
+                            {
+                                var files = Directory.GetFiles(basePath, pattern, SearchOption.AllDirectories);
+                                foreach (var file in files)
+                                {
+                                    try
+                                    {
+                                        var fi = new FileInfo(file);
+                                        freedSpace += fi.Length;
+                                        if (!_dryRun)
+                                        {
+                                            fi.Delete();
+                                        }
+                                        else
+                                        {
+                                            LogDryRun($"Would delete: {file} ({FormatBytes(fi.Length)})");
+                                        }
+                                        clearedCount++;
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} app-specific items ({FormatBytes(freedSpace)} freed)");
             Console.ResetColor();
@@ -7371,257 +7703,14 @@ class WindowsCleanupTool
         }
     }
 
-    static void ClearPowerToys()
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n🔹 Clearing PowerToys logs and caches...");
-        Console.ResetColor();
-
-        long freedSpace = 0;
-        int clearedCount = 0;
-
-        try
-        {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-
-            // PowerToys main directories
-            var powerToysBasePaths = new[]
-            {
-                Path.Combine(localAppData, "Microsoft", "PowerToys"),
-                Path.Combine(programData, "Microsoft", "PowerToys")
-            };
-
-            bool foundAny = false;
-            foreach (var basePath in powerToysBasePaths)
-            {
-                if (!Directory.Exists(basePath))
-                    continue;
-
-                foundAny = true;
-
-                // Clear logs for all PowerToys modules
-                var logPaths = new[]
-                {
-                    Path.Combine(basePath, "Logs"),
-                    Path.Combine(basePath, "FancyZones", "Logs"),
-                    Path.Combine(basePath, "PowerRename", "Logs"),
-                    Path.Combine(basePath, "ImageResizer", "Logs"),
-                    Path.Combine(basePath, "KeyboardManager", "Logs"),
-                    Path.Combine(basePath, "PowerLauncher", "Logs"),
-                    Path.Combine(basePath, "ColorPicker", "Logs"),
-                    Path.Combine(basePath, "ShortcutGuide", "Logs"),
-                    Path.Combine(basePath, "FileLocksmith", "Logs"),
-                    Path.Combine(basePath, "Awake", "Logs"),
-                    Path.Combine(basePath, "PowerAccent", "Logs"),
-                    Path.Combine(basePath, "PowerOCR", "Logs"),
-                    Path.Combine(basePath, "MouseUtils", "Logs"),
-                    Path.Combine(basePath, "Peek", "Logs"),
-                    Path.Combine(basePath, "RegistryPreview", "Logs"),
-                    Path.Combine(basePath, "CropAndLock", "Logs"),
-                    Path.Combine(basePath, "EnvironmentVariables", "Logs"),
-                    Path.Combine(basePath, "Hosts", "Logs"),
-                    Path.Combine(basePath, "MeasureTool", "Logs"),
-                    Path.Combine(basePath, "PowerToys Run", "Logs"),
-                };
-
-                foreach (var logPath in logPaths)
-                {
-                    if (Directory.Exists(logPath))
-                    {
-                        try
-                        {
-                            var files = Directory.GetFiles(logPath, "*.*", SearchOption.AllDirectories);
-                            foreach (var file in files)
-                            {
-                                try
-                                {
-                                    if (_dryRun)
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        freedSpace += fileInfo.Length;
-                                        LogDryRun($"Would delete: {file} ({FormatBytes(fileInfo.Length)})");
-                                        clearedCount++;
-                                    }
-                                    else
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        freedSpace += fileInfo.Length;
-                                        fileInfo.Delete();
-                                        clearedCount++;
-                                    }
-                                }
-                                catch { /* Skip files in use */ }
-                            }
-                        }
-                        catch { /* Skip if inaccessible */ }
-                    }
-                }
-
-                // Clear PowerToys cache directories
-                var cachePaths = new[]
-                {
-                    Path.Combine(basePath, "Cache"),
-                    Path.Combine(basePath, "PowerLauncher", "Cache"),
-                    Path.Combine(basePath, "PowerToys Run", "Cache"),
-                    Path.Combine(basePath, "Peek", "Cache"),
-                };
-
-                foreach (var cachePath in cachePaths)
-                {
-                    if (Directory.Exists(cachePath))
-                    {
-                        try
-                        {
-                            var files = Directory.GetFiles(cachePath, "*.*", SearchOption.AllDirectories);
-                            foreach (var file in files)
-                            {
-                                try
-                                {
-                                    if (_dryRun)
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        freedSpace += fileInfo.Length;
-                                        LogDryRun($"Would delete: {file} ({FormatBytes(fileInfo.Length)})");
-                                        clearedCount++;
-                                    }
-                                    else
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        freedSpace += fileInfo.Length;
-                                        fileInfo.Delete();
-                                        clearedCount++;
-                                    }
-                                }
-                                catch { /* Skip files in use */ }
-                            }
-
-                            if (!_dryRun)
-                            {
-                                try { Directory.Delete(cachePath, true); } catch { }
-                            }
-                        }
-                        catch { /* Skip if inaccessible */ }
-                    }
-                }
-
-                // Clear temp files and crash dumps
-                var tempPaths = new[]
-                {
-                    Path.Combine(basePath, "Temp"),
-                    Path.Combine(basePath, "CrashDumps"),
-                };
-
-                foreach (var tempPath in tempPaths)
-                {
-                    if (Directory.Exists(tempPath))
-                    {
-                        try
-                        {
-                            var files = Directory.GetFiles(tempPath, "*.*", SearchOption.AllDirectories);
-                            foreach (var file in files)
-                            {
-                                try
-                                {
-                                    if (_dryRun)
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        freedSpace += fileInfo.Length;
-                                        LogDryRun($"Would delete: {file} ({FormatBytes(fileInfo.Length)})");
-                                        clearedCount++;
-                                    }
-                                    else
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        freedSpace += fileInfo.Length;
-                                        fileInfo.Delete();
-                                        clearedCount++;
-                                    }
-                                }
-                                catch { /* Skip files in use */ }
-                            }
-
-                            if (!_dryRun)
-                            {
-                                try { Directory.Delete(tempPath, true); } catch { }
-                            }
-                        }
-                        catch { /* Skip if inaccessible */ }
-                    }
-                }
-
-                // Clear settings backups (keep current settings)
-                var backupPath = Path.Combine(basePath, "Backup");
-                if (Directory.Exists(backupPath))
-                {
-                    try
-                    {
-                        var files = Directory.GetFiles(backupPath, "*.*", SearchOption.AllDirectories);
-                        foreach (var file in files)
-                        {
-                            try
-                            {
-                                // Keep the most recent backup, delete older ones
-                                var fileInfo = new FileInfo(file);
-                                if ((DateTime.Now - fileInfo.LastWriteTime).TotalDays > 7)
-                                {
-                                    if (_dryRun)
-                                    {
-                                        freedSpace += fileInfo.Length;
-                                        LogDryRun($"Would delete old backup: {file} ({FormatBytes(fileInfo.Length)})");
-                                        clearedCount++;
-                                    }
-                                    else
-                                    {
-                                        freedSpace += fileInfo.Length;
-                                        fileInfo.Delete();
-                                        clearedCount++;
-                                    }
-                                }
-                            }
-                            catch { /* Skip files in use */ }
-                        }
-                    }
-                    catch { /* Skip if inaccessible */ }
-                }
-            }
-
-            if (foundAny && clearedCount > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                if (_dryRun)
-                {
-                    Console.WriteLine($"  ✅ Would clear {clearedCount} PowerToys items ({FormatBytes(freedSpace)} would be freed)");
-                }
-                else
-                {
-                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} PowerToys items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
-                }
-                Console.ResetColor();
-            }
-            else if (!foundAny)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠️ PowerToys not detected on this system");
-                Console.ResetColor();
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠️ No cached files found to clean");
-                Console.ResetColor();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ❌ Failed: {ex.Message}");
-            Console.ResetColor();
-        }
-    }
-
     static void ClearPrismCache()
     {
+        // Skip Prism cleanup if not on ARM64 (Prism is ARM64-only emulation cache)
+        if (!RuntimeInformation.ProcessArchitecture.Equals(Architecture.Arm64))
+        {
+            return; // Silently skip - Prism only exists on ARM64
+        }
+
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("\n🔹 Clearing Prism ARM to x86/x64 emulation cache...");
         Console.ResetColor();
@@ -9419,218 +9508,6 @@ class WindowsCleanupTool
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine("  ⚠️ No Hyper-V logs found (Hyper-V may not be installed)");
-                Console.ResetColor();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ❌ Failed: {ex.Message}");
-            Console.ResetColor();
-        }
-    }
-
-    static void ClearVirtualBoxData()
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n🔹 Clearing VirtualBox logs and caches...");
-        Console.ResetColor();
-
-        long freedSpace = 0;
-        int clearedCount = 0;
-
-        try
-        {
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-
-            // VirtualBox paths
-            var vboxPaths = new List<string>
-            {
-                Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log"),
-                Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log.1"),
-                Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log.2"),
-                Path.Combine(userProfile, ".VirtualBox", "VBoxSVC.log.3"),
-                Path.Combine(userProfile, "VirtualBox VMs")  // Log files in VM directories
-            };
-
-            // Add Program Files paths
-            var vboxInstallPath = @"C:\Program Files\Oracle\VirtualBox";
-            if (Directory.Exists(vboxInstallPath))
-            {
-                vboxPaths.Add(Path.Combine(vboxInstallPath, "logs"));
-            }
-
-            foreach (var path in vboxPaths)
-            {
-                if (File.Exists(path))
-                {
-                    try
-                    {
-                        var fi = new FileInfo(path);
-                        freedSpace += fi.Length;
-                        if (!_dryRun)
-                        {
-                            fi.Delete();
-                        }
-                        else
-                        {
-                            LogDryRun($"Would delete: {path} ({FormatBytes(fi.Length)})");
-                        }
-                        clearedCount++;
-                    }
-                    catch { }
-                }
-                else if (Directory.Exists(path))
-                {
-                    try
-                    {
-                        // Look for .log files in VM directories
-                        var logFiles = Directory.GetFiles(path, "*.log", SearchOption.AllDirectories);
-                        foreach (var logFile in logFiles)
-                        {
-                            try
-                            {
-                                var fi = new FileInfo(logFile);
-                                freedSpace += fi.Length;
-                                if (!_dryRun)
-                                {
-                                    fi.Delete();
-                                }
-                                else
-                                {
-                                    LogDryRun($"Would delete: {logFile} ({FormatBytes(fi.Length)})");
-                                }
-                                clearedCount++;
-                            }
-                            catch { }
-                        }
-                    }
-                    catch { }
-                }
-            }
-
-            if (clearedCount > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VirtualBox log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
-                Console.ResetColor();
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠️ No VirtualBox logs found (VirtualBox may not be installed)");
-                Console.ResetColor();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ❌ Failed: {ex.Message}");
-            Console.ResetColor();
-        }
-    }
-
-    static void ClearVMwareData()
-    {
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n🔹 Clearing VMware logs and caches...");
-        Console.ResetColor();
-
-        long freedSpace = 0;
-        int clearedCount = 0;
-
-        try
-        {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-            var temp = Path.GetTempPath();
-
-            // VMware paths
-            var vmwarePaths = new[]
-            {
-                Path.Combine(appData, "VMware"),
-                Path.Combine(localAppData, "VMware"),
-                Path.Combine(programData, "VMware"),
-                Path.Combine(temp, "vmware-*")
-            };
-
-            // Specific items to clean (logs, caches, not configs or VMs)
-            var patterns = new[] { "*.log", "*.dmp", "vmware-*.log", "*.tmp" };
-
-            foreach (var basePath in vmwarePaths)
-            {
-                if (basePath.Contains("*"))
-                {
-                    // Handle wildcard paths (temp directories)
-                    var parentDir = Path.GetDirectoryName(basePath);
-                    if (Directory.Exists(parentDir))
-                    {
-                        var pattern = Path.GetFileName(basePath);
-                        var dirs = Directory.GetDirectories(parentDir, pattern);
-                        foreach (var dir in dirs)
-                        {
-                            try
-                            {
-                                var size = GetDirectorySize(dir);
-                                freedSpace += size;
-                                if (!_dryRun)
-                                {
-                                    Directory.Delete(dir, true);
-                                }
-                                else
-                                {
-                                    LogDryRun($"Would delete: {dir} ({FormatBytes(size)})");
-                                }
-                                clearedCount++;
-                            }
-                            catch { }
-                        }
-                    }
-                }
-                else if (Directory.Exists(basePath))
-                {
-                    try
-                    {
-                        // Clean logs and temp files
-                        foreach (var pattern in patterns)
-                        {
-                            var files = Directory.GetFiles(basePath, pattern, SearchOption.AllDirectories);
-                            foreach (var file in files)
-                            {
-                                try
-                                {
-                                    var fi = new FileInfo(file);
-                                    freedSpace += fi.Length;
-                                    if (!_dryRun)
-                                    {
-                                        fi.Delete();
-                                    }
-                                    else
-                                    {
-                                        LogDryRun($"Would delete: {file} ({FormatBytes(fi.Length)})");
-                                    }
-                                    clearedCount++;
-                                }
-                                catch { }
-                            }
-                        }
-                    }
-                    catch { }
-                }
-            }
-
-            if (clearedCount > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VMware log/cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
-                Console.ResetColor();
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠️ No VMware logs found (VMware may not be installed)");
                 Console.ResetColor();
             }
         }
