@@ -1188,12 +1188,13 @@ class WindowsCleanupTool
     static void ClearWSLHistory()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing WSL shell history...");
+        Console.WriteLine("\n→ Clearing WSL logs, caches, and shell history...");
         Console.ResetColor();
 
-        LogDryRun("\n=== WSL SHELL HISTORY ===");
+        LogDryRun("\n=== WSL CLEANUP ===");
 
         int clearedCount = 0;
+        long freedSpace = 0;
 
         try
         {
@@ -1248,20 +1249,20 @@ class WindowsCleanupTool
 
             Console.WriteLine($"  Found {distros.Count} WSL distribution(s)");
 
-            // History files to delete
-            var historyFiles = new[]
-            {
-                "~/.bash_history",
-                "~/.zsh_history",
-                "~/.zsh_sessions",
-                "~/.local/share/fish/fish_history",
-                "~/.history",
-                "~/.sh_history"
-            };
-
             foreach (var distro in distros)
             {
                 Console.WriteLine($"  Cleaning {distro}...");
+
+                // Shell history files to delete
+                var historyFiles = new[]
+                {
+                    "~/.bash_history",
+                    "~/.zsh_history",
+                    "~/.zsh_sessions",
+                    "~/.local/share/fish/fish_history",
+                    "~/.history",
+                    "~/.sh_history"
+                };
 
                 foreach (var historyFile in historyFiles)
                 {
@@ -1297,18 +1298,140 @@ class WindowsCleanupTool
                     }
                     catch { /* Skip files that don't exist or can't be deleted */ }
                 }
+
+                // Clear common cache and temp directories
+                var dirsToClean = new[]
+                {
+                    "~/.cache",
+                    "~/tmp",
+                    "/tmp",
+                    "/var/tmp",
+                    "/var/log",
+                    "~/.local/share/Trash",
+                    "~/.thumbnails"
+                };
+
+                foreach (var dirPath in dirsToClean)
+                {
+                    try
+                    {
+                        // Get size first (for display)
+                        var sizeCmd = new ProcessStartInfo
+                        {
+                            FileName = "wsl",
+                            Arguments = $"-d {distro} bash -c \"du -sb {dirPath} 2>/dev/null | cut -f1 || echo 0\"",
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true
+                        };
+
+                        long dirSize = 0;
+                        try
+                        {
+                            using var sizeProcess = Process.Start(sizeCmd);
+                            if (sizeProcess != null)
+                            {
+                                var sizeOutput = sizeProcess.StandardOutput.ReadToEnd().Trim();
+                                sizeProcess.WaitForExit();
+                                long.TryParse(sizeOutput, out dirSize);
+                            }
+                        }
+                        catch { }
+
+                        if (dirSize > 0)
+                        {
+                            // For /var/log and /tmp, only remove contents, not the directory itself
+                            string cleanCommand;
+                            if (dirPath == "/var/log" || dirPath == "/tmp" || dirPath == "/var/tmp")
+                            {
+                                cleanCommand = $"-d {distro} bash -c \"sudo find {dirPath} -type f -delete 2>/dev/null || true\"";
+                            }
+                            else
+                            {
+                                cleanCommand = $"-d {distro} bash -c \"rm -rf {dirPath}/* 2>/dev/null || true\"";
+                            }
+
+                            var deleteCmd = new ProcessStartInfo
+                            {
+                                FileName = "wsl",
+                                Arguments = cleanCommand,
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true
+                            };
+
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would clean: {distro}:{dirPath} ({FormatBytes(dirSize)})");
+                                clearedCount++;
+                            }
+                            else
+                            {
+                                using var deleteProcess = Process.Start(deleteCmd);
+                                if (deleteProcess != null)
+                                {
+                                    deleteProcess.WaitForExit();
+                                    clearedCount++;
+                                }
+                            }
+                            freedSpace += dirSize;
+                        }
+                    }
+                    catch { /* Skip directories that don't exist or can't be accessed */ }
+                }
+
+                // Clear package manager caches
+                var packageCacheCommands = new[]
+                {
+                    ("apt", "sudo apt-get clean 2>/dev/null || true"),
+                    ("yum", "sudo yum clean all 2>/dev/null || true"),
+                    ("dnf", "sudo dnf clean all 2>/dev/null || true"),
+                    ("zypper", "sudo zypper clean --all 2>/dev/null || true")
+                };
+
+                foreach (var (manager, cleanCmd) in packageCacheCommands)
+                {
+                    try
+                    {
+                        var cmd = new ProcessStartInfo
+                        {
+                            FileName = "wsl",
+                            Arguments = $"-d {distro} bash -c \"{cleanCmd}\"",
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true
+                        };
+
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would clean: {distro} {manager} cache");
+                        }
+                        else
+                        {
+                            using var process = Process.Start(cmd);
+                            if (process != null)
+                            {
+                                process.WaitForExit(10000); // 10 second timeout
+                            }
+                        }
+                    }
+                    catch { }
+                }
             }
 
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} WSL history file(s) across {distros.Count} distribution(s)");
+                Console.WriteLine($"  ✓ {(_dryRun ? "Would clean" : "Cleaned")} {clearedCount} WSL items across {distros.Count} distribution(s) ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No WSL history files found to clear");
+                Console.WriteLine("  ⚠ No WSL items found to clean");
                 Console.ResetColor();
             }
         }
@@ -4101,7 +4224,7 @@ class WindowsCleanupTool
                 }
             }
 
-            // 🐳 DOCKER - Comprehensive cleanup
+            // 🐳 DOCKER - Comprehensive cleanup (logs, cache, unused images)
             Console.WriteLine("  Cleaning Docker...");
             var dockerBasePath = Path.Combine(localAppData, "Docker");
             if (Directory.Exists(dockerBasePath))
@@ -4110,6 +4233,8 @@ class WindowsCleanupTool
                 {
                     Path.Combine(dockerBasePath, "log"),
                     Path.Combine(dockerBasePath, "wsl", "diagnostics"),
+                    Path.Combine(dockerBasePath, "wsl", "docker-desktop", "tmp"),
+                    Path.Combine(dockerBasePath, "wsl", "docker-desktop-data", "tmp"),
                     Path.Combine(appData, "Docker", "log.txt")
                 };
 
@@ -4174,6 +4299,80 @@ class WindowsCleanupTool
                             clearedCount++;
                         }
                         catch { }
+                    }
+                }
+                catch { }
+
+                // Run Docker cleanup commands if Docker is running
+                try
+                {
+                    var dockerInfo = new ProcessStartInfo
+                    {
+                        FileName = "docker",
+                        Arguments = "info",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+
+                    bool dockerRunning = false;
+                    try
+                    {
+                        using var checkProcess = Process.Start(dockerInfo);
+                        if (checkProcess != null)
+                        {
+                            checkProcess.WaitForExit(5000);
+                            dockerRunning = checkProcess.ExitCode == 0;
+                        }
+                    }
+                    catch { }
+
+                    if (dockerRunning)
+                    {
+                        Console.WriteLine("    Docker is running - cleaning build cache and unused images...");
+
+                        // Clean Docker build cache
+                        var cleanCommands = new[]
+                        {
+                            ("system prune -f", "Prune stopped containers and networks"),
+                            ("builder prune -f", "Prune build cache"),
+                            ("image prune -f", "Prune dangling images")
+                        };
+
+                        foreach (var (args, description) in cleanCommands)
+                        {
+                            try
+                            {
+                                var cmd = new ProcessStartInfo
+                                {
+                                    FileName = "docker",
+                                    Arguments = args,
+                                    UseShellExecute = false,
+                                    CreateNoWindow = true,
+                                    RedirectStandardOutput = true,
+                                    RedirectStandardError = true
+                                };
+
+                                if (_dryRun)
+                                {
+                                    LogDryRun($"Would run: docker {args} ({description})");
+                                }
+                                else
+                                {
+                                    using var process = Process.Start(cmd);
+                                    if (process != null)
+                                    {
+                                        process.WaitForExit(30000); // 30 second timeout
+                                        if (process.ExitCode == 0)
+                                        {
+                                            Console.WriteLine($"    ✓ {description}");
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
                 catch { }
