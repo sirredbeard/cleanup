@@ -40,4 +40,9 @@
     <NoWarn>IL2026;IL2057;IL2075;IL3050</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.0" />
+  </ItemGroup>
+
 </Project>
