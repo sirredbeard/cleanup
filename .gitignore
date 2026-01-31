@@ -421,3 +421,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Windows Cleanup Tool - Published executables (built locally, not committed)
+/WindowsCleanup-*.exe
+
+# Windows Cleanup Tool - Dry-run log files (not committed)
+dry-run-*.txt
