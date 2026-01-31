@@ -10,6 +10,10 @@ class WindowsCleanupTool
 
     static void Main(string[] args)
     {
+        // Set console encoding to UTF-8 for proper emoji display
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        Console.InputEncoding = System.Text.Encoding.UTF8;
+        
         // Check for dry-run mode
         bool foundDryRun = false;
         foreach (var arg in args)
@@ -1413,8 +1417,11 @@ class WindowsCleanupTool
                     // Fallback to default user
                     users.Add(("default", "~"));
                 }
+                
+                // ALWAYS include root user (home directory is /root, not /home/root)
+                users.Add(("root", "/root"));
 
-                Console.WriteLine($"    Found {users.Count} user(s) in {distro}");
+                Console.WriteLine($"    Found {users.Count} user(s) in {distro} (including root)");
 
                 // Clean for each user
                 foreach (var (username, homedir) in users)
@@ -1480,18 +1487,71 @@ class WindowsCleanupTool
                         $"{homedir}/tmp",
                         $"{homedir}/.local/share/Trash",
                         $"{homedir}/.thumbnails",
+                        
+                        // Desktop environment caches
+                        $"{homedir}/.cache/gnome-software",
+                        $"{homedir}/.cache/gnome-shell",
+                        $"{homedir}/.cache/kde4",
+                        $"{homedir}/.cache/plasmashell",
+                        $"{homedir}/.cache/kioexec",
+                        $"{homedir}/.cache/ksycoca5",
+                        $"{homedir}/.cache/gstreamer-1.0",
+                        $"{homedir}/.cache/thumbnails",
+                        $"{homedir}/.cache/fontconfig",
+                        $"{homedir}/.cache/mesa_shader_cache",
+                        
+                        // GTK/Qt caches
+                        $"{homedir}/.cache/gtk-3.0",
+                        $"{homedir}/.cache/gtk-4.0",
+                        $"{homedir}/.cache/qt",
+                        
+                        // Browser caches (if running browsers in WSL)
+                        $"{homedir}/.cache/mozilla",
+                        $"{homedir}/.cache/chromium",
+                        $"{homedir}/.cache/google-chrome",
+                        
+                        // Config app logs
                         $"{homedir}/.config/*/logs",
                         $"{homedir}/.config/*/cache",
+                        $"{homedir}/.local/share/xorg",
+                        
+                        // Development tool caches
                         $"{homedir}/.npm/_logs",
                         $"{homedir}/.npm/_cacache",
                         $"{homedir}/.yarn/cache",
+                        $"{homedir}/.pnpm-store",
                         $"{homedir}/.cargo/registry/cache",
                         $"{homedir}/.cargo/git/checkouts",
                         $"{homedir}/.rustup/downloads",
                         $"{homedir}/.m2/repository",
                         $"{homedir}/.gradle/caches",
+                        $"{homedir}/.gradle/daemon",
+                        $"{homedir}/.gradle/wrapper",
                         $"{homedir}/.sbt/boot",
-                        $"{homedir}/.ivy2/cache"
+                        $"{homedir}/.sbt/staging",
+                        $"{homedir}/.ivy2/cache",
+                        $"{homedir}/.nuget/packages",
+                        $"{homedir}/.cache/pip",
+                        $"{homedir}/.cache/go-build",
+                        $"{homedir}/.cache/composer",
+                        $"{homedir}/.composer/cache",
+                        $"{homedir}/.gem/ruby",
+                        $"{homedir}/.bundle/cache",
+                        
+                        // IDE caches
+                        $"{homedir}/.vscode/extensions/*/logs",
+                        $"{homedir}/.vscode-server/data/logs",
+                        $"{homedir}/.IntelliJIdea*/system/log",
+                        $"{homedir}/.PyCharm*/system/log",
+                        
+                        // Docker/Container caches
+                        $"{homedir}/.docker/buildx/cache",
+                        $"{homedir}/.docker/scan/cache",
+                        
+                        // Network/DNS caches
+                        $"{homedir}/.cache/dconf",
+                        $"{homedir}/.wget-hsts",
+                        $"{homedir}/.curlrc"
                     };
 
                     foreach (var dirPath in userDirsToClean)
@@ -1558,13 +1618,69 @@ class WindowsCleanupTool
                 // Clear system-wide directories (run as root)
                 var systemDirsToClean = new[]
                 {
+                    // Standard temp and log directories
                     "/tmp",
                     "/var/tmp",
                     "/var/log",
+                    
+                    // Package manager caches
                     "/var/cache/apt/archives",
+                    "/var/cache/apt/pkgcache.bin",
+                    "/var/cache/apt/srcpkgcache.bin",
                     "/var/cache/yum",
                     "/var/cache/dnf",
-                    "/var/cache/pacman/pkg"
+                    "/var/cache/pacman/pkg",
+                    "/var/cache/zypp",
+                    "/var/cache/apk",
+                    
+                    // Systemd/journald logs
+                    "/var/log/journal",
+                    "/run/log/journal",
+                    
+                    // System logs
+                    "/var/log/syslog",
+                    "/var/log/messages",
+                    "/var/log/kern.log",
+                    "/var/log/auth.log",
+                    "/var/log/daemon.log",
+                    "/var/log/user.log",
+                    "/var/log/debug",
+                    "/var/log/lastlog",
+                    "/var/log/wtmp",
+                    "/var/log/btmp",
+                    "/var/log/faillog",
+                    
+                    // Networking logs and caches
+                    "/var/log/mail.log",
+                    "/var/log/mail.err",
+                    "/var/log/apache2",
+                    "/var/log/nginx",
+                    "/var/log/httpd",
+                    "/var/cache/bind",
+                    "/var/cache/nscd",
+                    
+                    // Desktop environment caches
+                    "/var/cache/fontconfig",
+                    "/var/cache/man",
+                    "/var/cache/thumbnails",
+                    
+                    // Application logs
+                    "/var/log/cups",
+                    "/var/log/mysql",
+                    "/var/log/postgresql",
+                    "/var/log/mongodb",
+                    "/var/log/redis",
+                    "/var/log/docker",
+                    "/var/log/containerd",
+                    
+                    // Crash reports
+                    "/var/crash",
+                    "/var/lib/systemd/coredump",
+                    
+                    // Old rotated logs
+                    "/var/log/*.gz",
+                    "/var/log/*.1",
+                    "/var/log/*.old"
                 };
 
                 foreach (var dirPath in systemDirsToClean)
@@ -1642,10 +1758,12 @@ class WindowsCleanupTool
                 var packageCacheCommands = new[]
                 {
                     ("apt", "apt-get clean 2>/dev/null || true"),
+                    ("apt-autoremove", "apt-get autoremove -y 2>/dev/null || true"),
                     ("yum", "yum clean all 2>/dev/null || true"),
                     ("dnf", "dnf clean all 2>/dev/null || true"),
                     ("zypper", "zypper clean --all 2>/dev/null || true"),
-                    ("pacman", "pacman -Scc --noconfirm 2>/dev/null || true")
+                    ("pacman", "pacman -Scc --noconfirm 2>/dev/null || true"),
+                    ("apk", "apk cache clean 2>/dev/null || true")
                 };
 
                 foreach (var (manager, cleanCmd) in packageCacheCommands)
@@ -1677,6 +1795,82 @@ class WindowsCleanupTool
                     }
                     catch { }
                 }
+                
+                // Clear systemd journal logs (if systemd is present)
+                try
+                {
+                    var journalCleanCmd = new ProcessStartInfo
+                    {
+                        FileName = "wsl",
+                        Arguments = $"-d {distro} --user root bash -c \"journalctl --vacuum-time=1d 2>/dev/null || true\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    
+                    if (_dryRun)
+                    {
+                        LogDryRun($"Would clean: {distro} systemd journal logs");
+                    }
+                    else
+                    {
+                        using var process = Process.Start(journalCleanCmd);
+                        if (process != null)
+                        {
+                            process.WaitForExit(5000);
+                        }
+                    }
+                }
+                catch { }
+                
+                // Clear thumbnail caches (desktop environments)
+                try
+                {
+                    var thumbCmd = new ProcessStartInfo
+                    {
+                        FileName = "wsl",
+                        Arguments = $"-d {distro} --user root bash -c \"rm -rf /home/*/.cache/thumbnails/* 2>/dev/null || true\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    
+                    if (!_dryRun)
+                    {
+                        using var process = Process.Start(thumbCmd);
+                        if (process != null)
+                        {
+                            process.WaitForExit(5000);
+                        }
+                    }
+                }
+                catch { }
+                
+                // Clear old log files (*.gz, *.1, *.old)
+                try
+                {
+                    var oldLogsCmd = new ProcessStartInfo
+                    {
+                        FileName = "wsl",
+                        Arguments = $"-d {distro} --user root bash -c \"find /var/log -type f \\( -name '*.gz' -o -name '*.1' -o -name '*.old' \\) -delete 2>/dev/null || true\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    
+                    if (!_dryRun)
+                    {
+                        using var process = Process.Start(oldLogsCmd);
+                        if (process != null)
+                        {
+                            process.WaitForExit(5000);
+                        }
+                    }
+                }
+                catch { }
             }
 
             if (clearedCount > 0)
@@ -5617,88 +5811,99 @@ class WindowsCleanupTool
 
             // ✂️ SNIPPING TOOL - Cache and logs
             Console.WriteLine("  Cleaning Snipping Tool...");
-            var snippingToolPaths = new[]
+            
+            // Only clean ScreenSketch package cache folders (NOT the CBS system package!)
+            var screenSketchPath = Path.Combine(localAppData, "Packages", "Microsoft.ScreenSketch_8wekyb3d8bbwe");
+            if (Directory.Exists(screenSketchPath))
             {
-                Path.Combine(localAppData, "Packages", "Microsoft.ScreenSketch_8wekyb3d8bbwe"),
-                Path.Combine(localAppData, "Packages", "MicrosoftWindows.Client.CBS_cw5n1h2txyewy", "TempState")
-            };
-
-            foreach (var snipPath in snippingToolPaths)
-            {
-                if (Directory.Exists(snipPath))
+                var snipCachePaths = new[]
                 {
-                    var snipCachePaths = new[]
-                    {
-                        Path.Combine(snipPath, "AC"),
-                        Path.Combine(snipPath, "LocalCache"),
-                        Path.Combine(snipPath, "TempState")
-                    };
+                    Path.Combine(screenSketchPath, "AC"),
+                    Path.Combine(screenSketchPath, "LocalCache"),
+                    Path.Combine(screenSketchPath, "TempState")
+                };
 
-                    foreach (var cachePath in snipCachePaths)
+                foreach (var cachePath in snipCachePaths)
+                {
+                    if (Directory.Exists(cachePath))
                     {
-                        if (Directory.Exists(cachePath))
+                        try
                         {
-                            try
+                            var size = GetDirectorySize(cachePath);
+                            if (_dryRun)
                             {
-                                var size = GetDirectorySize(cachePath);
-                                if (_dryRun)
-                                {
-                                    LogDryRun($"Would delete directory: {cachePath} ({FormatBytes(size)})");
-                                }
-                                else
-                                {
-                                    Directory.Delete(cachePath, true);
-                                }
-                                freedSpace += size;
-                                clearedCount++;
+                                LogDryRun($"Would delete directory: {cachePath} ({FormatBytes(size)})");
                             }
-                            catch { }
+                            else
+                            {
+                                Directory.Delete(cachePath, true);
+                            }
+                            freedSpace += size;
+                            clearedCount++;
                         }
+                        catch { }
                     }
                 }
             }
+            
+            // DO NOT TOUCH MicrosoftWindows.Client.CBS package - it's critical for Windows Shell and keyboard shortcuts!
 
             // 📷 CAMERA - Windows Camera app
             Console.WriteLine("  Cleaning Windows Camera...");
-            var cameraPaths = new[]
+            
+            // Clean Camera app package
+            var cameraPackagePath = Path.Combine(localAppData, "Packages", "Microsoft.WindowsCamera_8wekyb3d8bbwe");
+            if (Directory.Exists(cameraPackagePath))
             {
-                Path.Combine(localAppData, "Packages", "Microsoft.WindowsCamera_8wekyb3d8bbwe"),
-                Path.Combine(localAppData, "Packages", "MicrosoftWindows.Client.CBS_cw5n1h2txyewy", "LocalState", "Microsoft.Media.FaceAnalysis")
-            };
-
-            foreach (var cameraPath in cameraPaths)
-            {
-                if (Directory.Exists(cameraPath))
+                var cameraCachePaths = new[]
                 {
-                    var cameraCachePaths = new[]
-                    {
-                        Path.Combine(cameraPath, "AC"),
-                        Path.Combine(cameraPath, "LocalCache"),
-                        Path.Combine(cameraPath, "TempState")
-                    };
+                    Path.Combine(cameraPackagePath, "AC"),
+                    Path.Combine(cameraPackagePath, "LocalCache"),
+                    Path.Combine(cameraPackagePath, "TempState")
+                };
 
-                    foreach (var cachePath in cameraCachePaths)
+                foreach (var cachePath in cameraCachePaths)
+                {
+                    if (Directory.Exists(cachePath))
                     {
-                        if (Directory.Exists(cachePath))
+                        try
                         {
-                            try
+                            var size = GetDirectorySize(cachePath);
+                            if (_dryRun)
                             {
-                                var size = GetDirectorySize(cachePath);
-                                if (_dryRun)
-                                {
-                                    LogDryRun($"Would delete directory: {cachePath} ({FormatBytes(size)})");
-                                }
-                                else
-                                {
-                                    Directory.Delete(cachePath, true);
-                                }
-                                freedSpace += size;
-                                clearedCount++;
+                                LogDryRun($"Would delete directory: {cachePath} ({FormatBytes(size)})");
                             }
-                            catch { }
+                            else
+                            {
+                                Directory.Delete(cachePath, true);
+                            }
+                            freedSpace += size;
+                            clearedCount++;
                         }
+                        catch { }
                     }
                 }
+            }
+            
+            // Clean Face Analysis cache (specific subfolder only)
+            var faceAnalysisPath = Path.Combine(localAppData, "Packages", "MicrosoftWindows.Client.CBS_cw5n1h2txyewy", "LocalState", "Microsoft.Media.FaceAnalysis");
+            if (Directory.Exists(faceAnalysisPath))
+            {
+                try
+                {
+                    var size = GetDirectorySize(faceAnalysisPath);
+                    if (_dryRun)
+                    {
+                        LogDryRun($"Would delete directory: {faceAnalysisPath} ({FormatBytes(size)})");
+                    }
+                    else
+                    {
+                        Directory.Delete(faceAnalysisPath, true);
+                    }
+                    freedSpace += size;
+                    clearedCount++;
+                }
+                catch { }
             }
 
             // 📄 MICROSOFT OFFICE - All applications comprehensive cleanup
@@ -13779,7 +13984,11 @@ class WindowsCleanupTool
                 @"C:\$WINDOWS.~BT",      // Windows 10/11 upgrade files
                 @"C:\$WINDOWS.~WS",      // Windows setup files
                 @"C:\$Windows.~Q",       // Quality update files
-                @"C:\Windows.old"        // Previous Windows installation (usually handled by Disk Cleanup, but try anyway)
+                @"C:\$GetCurrent",       // Windows update installation
+                @"C:\$SysReset",         // System reset files
+                @"C:\Windows.old",       // Previous Windows installation
+                @"C:\Windows\SoftwareDistribution\Download",  // Windows Update downloads
+                @"C:\Windows\Temp"       // Windows temp (may have update files)
             };
 
             foreach (var folder in upgradeFolders)
@@ -13788,31 +13997,54 @@ class WindowsCleanupTool
                 {
                     try
                     {
-                        var size = GetDirectorySize(folder);
-                        freedSpace += size;
+                        // Try to get size, but don't fail if we can't (might be too large or protected)
+                        long size = 0;
+                        try
+                        {
+                            size = GetDirectorySizeQuick(folder);
+                        }
+                        catch { }
                         
                         if (_dryRun)
                         {
                             LogDryRun($"Would delete: {folder} ({FormatBytes(size)})");
+                            freedSpace += size;
+                            clearedCount++;
                         }
                         else
                         {
-                            // These folders can be very large and protected, try to delete
-                            Directory.Delete(folder, true);
+                            // These folders require TrustedInstaller permissions
+                            Console.WriteLine($"    Attempting to remove {folder}...");
+                            var result = TakeOwnershipAndDelete(folder, out string errorMsg);
+                            if (result)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine($"    ✅ Removed {folder} ({FormatBytes(size)})");
+                                Console.ResetColor();
+                                freedSpace += size;
+                                clearedCount++;
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine($"    ⚠️ Could not remove {folder}");
+                                if (!string.IsNullOrEmpty(errorMsg))
+                                {
+                                    Console.WriteLine($"       Reason: {errorMsg}");
+                                }
+                                Console.ResetColor();
+                            }
                         }
-                        clearedCount++;
                     }
-                    catch (UnauthorizedAccessException)
+                    catch (Exception ex)
                     {
-                        // These folders often require TrustedInstaller permissions
                         if (!_dryRun)
                         {
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"  ⚠️ {folder} requires elevated permissions (run as admin or use Disk Cleanup)");
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"  ❌ Error with {folder}: {ex.Message}");
                             Console.ResetColor();
                         }
                     }
-                    catch { }
                 }
             }
 
@@ -14034,6 +14266,162 @@ class WindowsCleanupTool
             }
         }
         catch { }
+        return size;
+    }
+
+    static bool TakeOwnershipAndDelete(string folderPath, out string errorMessage)
+    {
+        errorMessage = "";
+        string batchFile = null;
+        try
+        {
+            // Try simple deletion first (works for non-protected folders)
+            try
+            {
+                Directory.Delete(folderPath, true);
+                if (!Directory.Exists(folderPath))
+                {
+                    return true;
+                }
+            }
+            catch { }
+            
+            // For TrustedInstaller-protected folders, use batch file approach
+            // CRITICAL: Don't redirect output - write directly to NUL to avoid blocking
+            Console.WriteLine($"       Taking ownership (this may take 1-2 minutes for large folders)...");
+            
+            // Create a batch file to avoid command line escaping issues
+            batchFile = Path.Combine(Path.GetTempPath(), $"cleanup_{Guid.NewGuid()}.bat");
+            var batchContent = $@"@echo off
+takeown /f ""{folderPath}"" /a /r /d y >nul 2>nul
+icacls ""{folderPath}"" /grant Administrators:F /t /c /q >nul 2>nul
+rd /s /q ""{folderPath}"" >nul 2>nul
+exit /b 0
+";
+            File.WriteAllText(batchFile, batchContent);
+            
+            var cmdProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = batchFile,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = false,  // Don't redirect to avoid blocking
+                    RedirectStandardError = false,
+                    CreateNoWindow = true
+                }
+            };
+            
+            cmdProcess.Start();
+            
+            // Show progress dots while waiting (max 2 minutes)
+            int secondsWaited = 0;
+            int maxSeconds = 120; // 2 minute timeout
+            while (!cmdProcess.HasExited && secondsWaited < maxSeconds)
+            {
+                System.Threading.Thread.Sleep(5000); // Wait 5 seconds
+                secondsWaited += 5;
+                Console.Write(".");
+                
+                // Check if folder is gone (early success detection)
+                if (!Directory.Exists(folderPath))
+                {
+                    break;
+                }
+            }
+            Console.WriteLine(); // New line after dots
+            
+            if (!cmdProcess.HasExited)
+            {
+                try { cmdProcess.Kill(); } catch { }
+                errorMessage = $"Deletion timed out after {maxSeconds} seconds. Folder may be too large or requires reboot.";
+            }
+            
+            // Clean up batch file
+            try { if (batchFile != null && File.Exists(batchFile)) File.Delete(batchFile); } catch { }
+            
+            // Check if folder was deleted
+            if (!Directory.Exists(folderPath))
+            {
+                return true;
+            }
+            
+            // Final attempt: Try .NET method as last resort
+            try
+            {
+                Directory.Delete(folderPath, true);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Could not fully remove folder. Try running Disk Cleanup or manually delete on reboot. Error: {ex.Message}";
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Clean up batch file
+            try { if (batchFile != null && File.Exists(batchFile)) File.Delete(batchFile); } catch { }
+            
+            errorMessage = ex.Message;
+            return false;
+        }
+    }
+
+    static long GetDirectorySizeQuick(string path)
+    {
+        // Quick size calculation with timeout to avoid hanging on huge folders
+        long size = 0;
+        try
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c dir \"{path}\" /s /-c",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            
+            // Read output with timeout
+            var task = System.Threading.Tasks.Task.Run(() => process.StandardOutput.ReadToEnd());
+            if (task.Wait(10000)) // 10 second timeout
+            {
+                var output = task.Result;
+                // Parse the total bytes from dir output (last line usually has "X bytes")
+                var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var line in lines.Reverse())
+                {
+                    if (line.Contains("bytes") && line.Contains("total"))
+                    {
+                        var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                        for (int i = 0; i < parts.Length - 1; i++)
+                        {
+                            if (parts[i + 1].Contains("bytes"))
+                            {
+                                var sizeStr = parts[i].Replace(",", "").Replace(".", "");
+                                if (long.TryParse(sizeStr, out long parsedSize))
+                                {
+                                    return parsedSize;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            if (!process.HasExited)
+            {
+                process.Kill();
+            }
+        }
+        catch { }
+        
         return size;
     }
 }
