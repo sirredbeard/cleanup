@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Principal;
 using System.ServiceProcess;
 using Microsoft.Win32;
@@ -31,13 +31,12 @@ class WindowsCleanupTool
             _dryRunLog = new StreamWriter(logPath, false);
             
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("╔══════════════════════════════════════════╗");
-            Console.WriteLine("║   Windows Cleanup Tool - DRY RUN MODE    ║");
-            Console.WriteLine("╚══════════════════════════════════════════╝");
-            Console.ResetColor();
             Console.WriteLine();
+            Console.WriteLine("  🧹✨ Windows Cleanup Tool - DRY RUN MODE 🔍");
+            Console.WriteLine();
+            Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"📝 Dry-run mode: No files will be deleted. Logging to: {logPath}");
+            Console.WriteLine($"  🔵 Dry-run mode: No files will be deleted. Logging to: {logPath}");
             Console.ResetColor();
             Console.WriteLine();
             
@@ -51,9 +50,9 @@ class WindowsCleanupTool
         else
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("╔══════════════════════════════════════════╗");
-            Console.WriteLine("║   Windows Cleanup Tool                   ║");
-            Console.WriteLine("╚══════════════════════════════════════════╝");
+            Console.WriteLine();
+            Console.WriteLine("  🧹✨ Windows Cleanup Tool 💻");
+            Console.WriteLine();
             Console.ResetColor();
             Console.WriteLine();
         }
@@ -61,9 +60,9 @@ class WindowsCleanupTool
         if (!IsRunAsAdministrator())
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("⚠ Warning: Not running as administrator. Some cleanup tasks may fail.");
+            Console.WriteLine("⚠️ Warning: Not running as administrator. Some cleanup tasks may fail.");
             Console.ResetColor();
-            Console.WriteLine("\nWould you like to restart as administrator? (Y/N)");
+            Console.WriteLine("\n💭 Would you like to restart as administrator? (Y/N)");
             
             var key = Console.ReadKey(true);
             if (key.Key == ConsoleKey.Y)
@@ -213,7 +212,7 @@ class WindowsCleanupTool
     static void ClearTempFiles()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("→ Clearing temporary files...");
+        Console.WriteLine("🔹 Clearing temporary files...");
         Console.ResetColor();
 
         var tempPaths = new[]
@@ -274,20 +273,20 @@ class WindowsCleanupTool
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine($"  ⚠ Could not fully clean: {tempPath} - {ex.Message}");
+                Console.WriteLine($"  ⚠️ Could not fully clean: {tempPath} - {ex.Message}");
                 Console.ResetColor();
             }
         }
 
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"  ✓ {(_dryRun ? "Would delete" : "Deleted")} {deletedCount} temp files ({FormatBytes(freedSpace)} freed)");
+        Console.WriteLine($"  ✅ {(_dryRun ? "Would delete" : "Deleted")} {deletedCount} temp files ({FormatBytes(freedSpace)} freed)");
         Console.ResetColor();
     }
 
     static void ClearPageAndHibernateFiles()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing page and hibernate files...");
+        Console.WriteLine("\n🔹 Clearing page and hibernate files...");
         Console.ResetColor();
 
         LogDryRun("\n=== PAGE AND HIBERNATE FILES ===");
@@ -304,7 +303,7 @@ class WindowsCleanupTool
                 RunCommand("powercfg", "/hibernate off");
             }
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ Hibernation file {(_dryRun ? "would be" : "")} deleted");
+            Console.WriteLine($"  ✅ Hibernation file {(_dryRun ? "would be" : "")} deleted");
             Console.ResetColor();
 
             // Re-enable hibernation (recreates clean hiberfil.sys)
@@ -317,7 +316,7 @@ class WindowsCleanupTool
                 RunCommand("powercfg", "/hibernate on");
             }
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ Hibernation {(_dryRun ? "would be" : "")} re-enabled (clean file recreated)");
+            Console.WriteLine($"  ✅ Hibernation {(_dryRun ? "would be" : "")} re-enabled (clean file recreated)");
             Console.ResetColor();
 
             // Enable pagefile clearing on shutdown
@@ -336,20 +335,20 @@ class WindowsCleanupTool
                     }
                 }
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ Pagefile {(_dryRun ? "would be configured to clear" : "will be cleared")} on next shutdown/restart");
+                Console.WriteLine($"  ✅ Pagefile {(_dryRun ? "would be configured to clear" : "will be cleared")} on next shutdown/restart");
                 Console.ResetColor();
             }
             catch
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ Could not enable pagefile clearing (requires admin)");
+                Console.WriteLine("  ⚠️ Could not enable pagefile clearing (requires admin)");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -357,7 +356,7 @@ class WindowsCleanupTool
     static void ClearRecentFiles()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing recent files and jump lists...");
+        Console.WriteLine("\n🔹 Clearing recent files and jump lists...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -408,13 +407,13 @@ class WindowsCleanupTool
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} recent files and jump lists");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} recent files and jump lists");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -422,7 +421,7 @@ class WindowsCleanupTool
     static void ClearStartMenuRecent()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Start Menu recent and recommended items...");
+        Console.WriteLine("\n🔹 Clearing Start Menu recent and recommended items...");
         Console.ResetColor();
 
         LogDryRun("\n=== START MENU RECENT AND RECOMMENDED ===");
@@ -550,13 +549,13 @@ class WindowsCleanupTool
             catch { }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Start Menu recent and recommended items");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Start Menu recent and recommended items");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -564,7 +563,7 @@ class WindowsCleanupTool
     static void ClearThumbnailsAndCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing thumbnail and icon caches...");
+        Console.WriteLine("\n🔹 Clearing thumbnail and icon caches...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -622,13 +621,13 @@ class WindowsCleanupTool
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} cache files ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} cache files ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -636,7 +635,7 @@ class WindowsCleanupTool
     static void ClearBrowserData()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing browser data...");
+        Console.WriteLine("\n🔹 Clearing browser data...");
         Console.ResetColor();
 
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -800,7 +799,7 @@ class WindowsCleanupTool
                 catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine($"  ⚠ Warning: {ex.Message}");
+                    Console.WriteLine($"  ⚠️ Warning: {ex.Message}");
                     Console.ResetColor();
                 }
             }
@@ -876,13 +875,100 @@ class WindowsCleanupTool
             Console.WriteLine($"\n  📋 Detected browsers: {string.Join(", ", detectedBrowsers.Distinct())}");
             Console.ResetColor();
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} browser data (including download history)");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} browser data (including download history)");
             Console.ResetColor();
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.DarkYellow;
-            Console.WriteLine("  ⚠ No supported browsers detected");
+            Console.WriteLine("  ⚠️ No supported browsers detected");
+            Console.ResetColor();
+        }
+
+        // Clear legacy Internet Explorer cache
+        ClearInternetExplorerCache();
+    }
+
+    static void ClearInternetExplorerCache()
+    {
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("\n🔹 Clearing legacy Internet Explorer cache...");
+        Console.ResetColor();
+
+        long freedSpace = 0;
+        int clearedCount = 0;
+
+        try
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var localLowAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow");
+            
+            // IE cache locations
+            var ieCachePaths = new[]
+            {
+                Path.Combine(localAppData, "Microsoft", "Windows", "INetCache"),
+                Path.Combine(localAppData, "Microsoft", "Windows", "INetCookies"),
+                Path.Combine(localAppData, "Microsoft", "Windows", "IECompatCache"),
+                Path.Combine(localAppData, "Microsoft", "Windows", "IECompatUaCache"),
+                Path.Combine(localAppData, "Microsoft", "Windows", "IEDownloadHistory"),
+                Path.Combine(localAppData, "Microsoft", "Windows", "Temporary Internet Files"),
+                Path.Combine(localLowAppData, "Microsoft", "Internet Explorer", "DOMStore"),
+                Path.Combine(localLowAppData, "Microsoft", "Internet Explorer", "Services"),
+                Path.Combine(localAppData, "Microsoft", "Internet Explorer", "Recovery"),
+                Path.Combine(localAppData, "Microsoft", "Internet Explorer", "imagestore")
+            };
+
+            foreach (var cachePath in ieCachePaths)
+            {
+                if (Directory.Exists(cachePath))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(cachePath);
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete directory: {cachePath} ({FormatBytes(size)})");
+                        }
+                        else
+                        {
+                            Directory.Delete(cachePath, true);
+                        }
+                        freedSpace += size;
+                        clearedCount++;
+                    }
+                    catch { }
+                }
+            }
+
+            // Clear IE Flash cache
+            var flashCachePath = Path.Combine(localAppData, "Microsoft", "Windows", "FlashPlayerCache");
+            if (Directory.Exists(flashCachePath))
+            {
+                try
+                {
+                    var size = GetDirectorySize(flashCachePath);
+                    if (_dryRun)
+                    {
+                        LogDryRun($"Would delete directory: {flashCachePath} ({FormatBytes(size)})");
+                    }
+                    else
+                    {
+                        Directory.Delete(flashCachePath, true);
+                    }
+                    freedSpace += size;
+                    clearedCount++;
+                }
+                catch { }
+            }
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} IE cache items ({FormatBytes(freedSpace)} freed)");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -890,7 +976,7 @@ class WindowsCleanupTool
     static void ClearPowerShellHistory()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing PowerShell history...");
+        Console.WriteLine("\n🔹 Clearing PowerShell history...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -915,13 +1001,13 @@ class WindowsCleanupTool
                         File.Delete(historyPath);
                         clearedCount++;
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")}: {Path.GetFileName(historyPath)}");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")}: {Path.GetFileName(historyPath)}");
                         Console.ResetColor();
                     }
                     catch (Exception ex)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.WriteLine($"  ⚠ Could not delete {Path.GetFileName(historyPath)}: {ex.Message}");
+                        Console.WriteLine($"  ⚠️ Could not delete {Path.GetFileName(historyPath)}: {ex.Message}");
                         Console.ResetColor();
                     }
                 }
@@ -949,7 +1035,7 @@ class WindowsCleanupTool
                                 File.Delete(userHistoryPath);
                                 clearedCount++;
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} PowerShell history for user: {userName}");
+                                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} PowerShell history for user: {userName}");
                                 Console.ResetColor();
                             }
                             catch { /* Skip if access denied */ }
@@ -961,20 +1047,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} PowerShell history file(s)");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} PowerShell history file(s)");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No PowerShell history files found");
+                Console.WriteLine("  ⚠️ No PowerShell history files found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -982,7 +1068,7 @@ class WindowsCleanupTool
     static void ClearCommandPromptHistory()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Command Prompt history...");
+        Console.WriteLine("\n🔹 Clearing Command Prompt history...");
         Console.ResetColor();
 
         try
@@ -1205,14 +1291,14 @@ class WindowsCleanupTool
 
             // Clear command prompt doskey history (session-based, so we just note it)
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} Run dialog and command history ({clearedCount} entries)");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} Run dialog and command history ({clearedCount} entries)");
             Console.WriteLine("  ℹ Note: Active Command Prompt session history will clear on window close");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -1220,7 +1306,7 @@ class WindowsCleanupTool
     static void ClearWSLHistory()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing WSL logs, caches, and shell history...");
+        Console.WriteLine("\n🔹 Clearing WSL logs, caches, and shell history...");
         Console.ResetColor();
 
         LogDryRun("\n=== WSL CLEANUP ===");
@@ -1274,7 +1360,7 @@ class WindowsCleanupTool
             if (distros.Count == 0)
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ WSL not detected or no distributions installed");
+                Console.WriteLine("  ⚠️ WSL not detected or no distributions installed");
                 Console.ResetColor();
                 return;
             }
@@ -1457,20 +1543,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clean" : "Cleaned")} {clearedCount} WSL items across {distros.Count} distribution(s) ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clean" : "Cleaned")} {clearedCount} WSL items across {distros.Count} distribution(s) ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No WSL items found to clean");
+                Console.WriteLine("  ⚠️ No WSL items found to clean");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -1478,7 +1564,7 @@ class WindowsCleanupTool
     static void ClearCopilotHistory()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing GitHub Copilot CLI logs, cache, and sessions...");
+        Console.WriteLine("\n🔹 Clearing GitHub Copilot CLI logs, cache, and sessions...");
         Console.ResetColor();
 
         try
@@ -1490,7 +1576,7 @@ class WindowsCleanupTool
             if (!Directory.Exists(copilotPath))
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No GitHub Copilot CLI directory found");
+                Console.WriteLine("  ⚠️ No GitHub Copilot CLI directory found");
                 Console.ResetColor();
                 return;
             }
@@ -1559,13 +1645,13 @@ class WindowsCleanupTool
                         }
 
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {dirName}");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {dirName}");
                         Console.ResetColor();
                     }
                     catch (Exception ex)
                     {
                         Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.WriteLine($"  ⚠ Could not fully clear {dirName}: {ex.Message}");
+                        Console.WriteLine($"  ⚠️ Could not fully clear {dirName}: {ex.Message}");
                         Console.ResetColor();
                     }
                 }
@@ -1633,7 +1719,7 @@ class WindowsCleanupTool
                                 deletedDirs++;
                                 
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {localPath}\\{dirName}");
+                                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {localPath}\\{dirName}");
                                 Console.ResetColor();
                             }
                             catch { }
@@ -1645,20 +1731,20 @@ class WindowsCleanupTool
             if (deletedFiles > 0 || deletedDirs > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would delete" : "Deleted")} {deletedFiles} files and {deletedDirs} directories ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would delete" : "Deleted")} {deletedFiles} files and {deletedDirs} directories ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No GitHub Copilot CLI cache/log files found to clear");
+                Console.WriteLine("  ⚠️ No GitHub Copilot CLI cache/log files found to clear");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -1666,7 +1752,7 @@ class WindowsCleanupTool
     static void ClearVSCodeCopilotCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing VS Code Copilot cache...");
+        Console.WriteLine("\n🔹 Clearing VS Code Copilot cache...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -1787,25 +1873,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} VS Code Copilot cache items ({FormatBytes(freedSpace)} freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} VS Code Copilot cache items ({FormatBytes(freedSpace)} freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VS Code Copilot cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VS Code Copilot cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ VS Code installations not detected");
+                Console.WriteLine("  ⚠️ VS Code installations not detected");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -1813,7 +1899,7 @@ class WindowsCleanupTool
     static void ClearCopilotPlusCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows Copilot+ (AI features) cache and logs...");
+        Console.WriteLine("\n🔹 Clearing Windows Copilot+ (AI features) cache and logs...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -2006,31 +2092,31 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} Copilot+ cache/log items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} Copilot+ cache/log items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Copilot+ cache/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Copilot+ cache/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else if (!foundAny)
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Windows Copilot+ features detected on this system");
+                Console.WriteLine("  ⚠️ No Windows Copilot+ features detected on this system");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No cached files found to clean");
+                Console.WriteLine("  ⚠️ No cached files found to clean");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -2038,7 +2124,7 @@ class WindowsCleanupTool
     static void ClearVisualStudioCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Visual Studio cache and logs...");
+        Console.WriteLine("\n🔹 Clearing Visual Studio cache and logs...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -2217,18 +2303,18 @@ class WindowsCleanupTool
             Console.ForegroundColor = ConsoleColor.Green;
             if (_dryRun)
             {
-                Console.WriteLine($"  ✓ Would clear {clearedCount} Visual Studio cache/log items ({FormatBytes(freedSpace)} freed)");
+                Console.WriteLine($"  ✅ Would clear {clearedCount} Visual Studio cache/log items ({FormatBytes(freedSpace)} freed)");
             }
             else
             {
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Visual Studio cache/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Visual Studio cache/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
             }
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -2300,7 +2386,7 @@ class WindowsCleanupTool
     static void ClearCloudflareWarp()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Cloudflare WARP data...");
+        Console.WriteLine("\n🔹 Clearing Cloudflare WARP data...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -2337,7 +2423,7 @@ class WindowsCleanupTool
                         Directory.CreateDirectory(logsPath);
                         freedSpace += size;
                         clearedCount++;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} WARP logs");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP logs");
                     }
                     catch { }
                 }
@@ -2353,7 +2439,7 @@ class WindowsCleanupTool
                         Directory.CreateDirectory(cachePath);
                         freedSpace += size;
                         clearedCount++;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} WARP cache");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP cache");
                     }
                     catch { }
                 }
@@ -2368,7 +2454,7 @@ class WindowsCleanupTool
                         Directory.Delete(crashPath, true);
                         freedSpace += size;
                         clearedCount++;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} WARP crash reports");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP crash reports");
                     }
                     catch { }
                 }
@@ -2383,7 +2469,7 @@ class WindowsCleanupTool
                         Directory.Delete(diagPath, true);
                         freedSpace += size;
                         clearedCount++;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} WARP diagnostics");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} WARP diagnostics");
                     }
                     catch { }
                 }
@@ -2392,26 +2478,26 @@ class WindowsCleanupTool
             if (foundWarp && clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} WARP data items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} WARP data items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else if (!foundWarp)
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ Cloudflare WARP not detected");
+                Console.WriteLine("  ⚠️ Cloudflare WARP not detected");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No WARP data to clear");
+                Console.WriteLine("  ⚠️ No WARP data to clear");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -2419,7 +2505,7 @@ class WindowsCleanupTool
     static void ClearWindowsFeatures()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows features data...");
+        Console.WriteLine("\n🔹 Clearing Windows features data...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -2552,18 +2638,18 @@ class WindowsCleanupTool
             Console.ForegroundColor = ConsoleColor.Green;
             if (_dryRun)
             {
-                Console.WriteLine($"  ✓ Would clear {clearedCount} Windows feature data items");
+                Console.WriteLine($"  ✅ Would clear {clearedCount} Windows feature data items");
             }
             else
             {
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Windows feature data items");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Windows feature data items");
             }
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -2571,7 +2657,7 @@ class WindowsCleanupTool
     static void ClearNetworkHistory()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing network history...");
+        Console.WriteLine("\n🔹 Clearing network history...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -2657,18 +2743,18 @@ class WindowsCleanupTool
             Console.ForegroundColor = ConsoleColor.Green;
             if (_dryRun)
             {
-                Console.WriteLine($"  ✓ Would clear {clearedCount} network history entries");
+                Console.WriteLine($"  ✅ Would clear {clearedCount} network history entries");
             }
             else
             {
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} network history entries");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} network history entries");
             }
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -2676,7 +2762,7 @@ class WindowsCleanupTool
     static void ClearApplicationCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing application caches...");
+        Console.WriteLine("\n🔹 Clearing application caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -2967,13 +3053,13 @@ class WindowsCleanupTool
             catch { }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} application cache items ({FormatBytes(freedSpace)} freed)");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} application cache items ({FormatBytes(freedSpace)} freed)");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -2981,7 +3067,7 @@ class WindowsCleanupTool
     static void ClearOutlookWebView()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Outlook WebView caches...");
+        Console.WriteLine("\n🔹 Clearing Outlook WebView caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -3082,20 +3168,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Outlook WebView cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Outlook WebView cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Outlook WebView caches found");
+                Console.WriteLine("  ⚠️ No Outlook WebView caches found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -3103,7 +3189,7 @@ class WindowsCleanupTool
     static void ClearEmbeddedWebViews()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing embedded WebView caches (Teams, Edge WebView2, etc.)...");
+        Console.WriteLine("\n🔹 Clearing embedded WebView caches (Teams, Edge WebView2, etc.)...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -3281,20 +3367,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} embedded WebView cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} embedded WebView cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No embedded WebView caches found");
+                Console.WriteLine("  ⚠️ No embedded WebView caches found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -3302,7 +3388,7 @@ class WindowsCleanupTool
     static void ClearAllDetectedAppData()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing detected application logs/cache/history...");
+        Console.WriteLine("\n🔹 Clearing detected application logs/cache/history...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -3426,13 +3512,13 @@ class WindowsCleanupTool
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} app data items ({FormatBytes(freedSpace)} freed)");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} app data items ({FormatBytes(freedSpace)} freed)");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -3440,7 +3526,7 @@ class WindowsCleanupTool
     static void ClearWindowsSandbox()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows Sandbox data...");
+        Console.WriteLine("\n🔹 Clearing Windows Sandbox data...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -3529,20 +3615,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Windows Sandbox items ({FormatBytes(freedSpace)} freed)");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Windows Sandbox items ({FormatBytes(freedSpace)} freed)");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Windows Sandbox data to clear");
+                Console.WriteLine("  ⚠️ No Windows Sandbox data to clear");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -3550,7 +3636,7 @@ class WindowsCleanupTool
     static void ClearSpecificInstalledApps()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing specific installed application data...");
+        Console.WriteLine("\n🔹 Clearing specific installed application data...");
         Console.ResetColor();
 
         LogDryRun("\n=== SPECIFIC INSTALLED APPS ===");
@@ -4719,7 +4805,7 @@ class WindowsCleanupTool
                                         process.WaitForExit(30000); // 30 second timeout
                                         if (process.ExitCode == 0)
                                         {
-                                            Console.WriteLine($"    ✓ {description}");
+                                            Console.WriteLine($"    ✅ {description}");
                                         }
                                     }
                                 }
@@ -6003,14 +6089,337 @@ class WindowsCleanupTool
                 }
             }
 
+            // 🎨 ADOBE APPLICATIONS - Comprehensive cleanup
+            Console.WriteLine("  Cleaning Adobe applications...");
+            var adobeBasePaths = new[]
+            {
+                Path.Combine(localAppData, "Adobe"),
+                Path.Combine(appData, "Adobe"),
+                Path.Combine(programData, "Adobe")
+            };
+
+            foreach (var adobeBasePath in adobeBasePaths)
+            {
+                if (Directory.Exists(adobeBasePath))
+                {
+                    // Clean common Adobe app folders
+                    var adobeApps = new[] 
+                    { 
+                        "Photoshop", "Illustrator", "InDesign", "Premiere Pro", "After Effects",
+                        "Acrobat", "Acrobat DC", "Adobe XD", "Lightroom", "Media Encoder",
+                        "Animate", "Audition", "Bridge", "Character Animator", "Dimension",
+                        "Dreamweaver", "Fresco", "Prelude", "Substance 3D Designer",
+                        "Substance 3D Painter", "Substance 3D Sampler", "Substance 3D Stager"
+                    };
+
+                    foreach (var adobeApp in adobeApps)
+                    {
+                        var appPath = Path.Combine(adobeBasePath, adobeApp);
+                        if (Directory.Exists(appPath))
+                        {
+                            // Clean logs, cache, temp files (preserve prefs, licenses, workspaces)
+                            var cleanupFolders = new[] { "Logs", "Cache", "Caches", "Temp", "logs", "cache" };
+                            foreach (var folder in cleanupFolders)
+                            {
+                                var folderPath = Path.Combine(appPath, folder);
+                                if (Directory.Exists(folderPath))
+                                {
+                                    try
+                                    {
+                                        var size = GetDirectorySize(folderPath);
+                                        if (_dryRun)
+                                        {
+                                            LogDryRun($"Would delete directory: {folderPath} ({FormatBytes(size)})");
+                                        }
+                                        else
+                                        {
+                                            Directory.Delete(folderPath, true);
+                                        }
+                                        freedSpace += size;
+                                        clearedCount++;
+                                    }
+                                    catch { }
+                                }
+                            }
+
+                            // Clean log files
+                            try
+                            {
+                                var logFiles = Directory.GetFiles(appPath, "*.log", SearchOption.AllDirectories);
+                                foreach (var file in logFiles)
+                                {
+                                    try
+                                    {
+                                        var fi = new FileInfo(file);
+                                        freedSpace += fi.Length;
+                                        if (_dryRun)
+                                        {
+                                            LogDryRun($"Would delete file: {file}");
+                                        }
+                                        else
+                                        {
+                                            fi.Delete();
+                                        }
+                                        clearedCount++;
+                                    }
+                                    catch { }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+
+                    // Adobe Creative Cloud specific cleanup
+                    var creativeClouds = new[] { "Creative Cloud", "Adobe Creative Cloud", "ACC" };
+                    foreach (var ccName in creativeClouds)
+                    {
+                        var ccPath = Path.Combine(adobeBasePath, ccName);
+                        if (Directory.Exists(ccPath))
+                        {
+                            var ccCleanupPaths = new[]
+                            {
+                                Path.Combine(ccPath, "Logs"),
+                                Path.Combine(ccPath, "Cache"),
+                                Path.Combine(ccPath, "logs")
+                            };
+
+                            foreach (var path in ccCleanupPaths)
+                            {
+                                if (Directory.Exists(path))
+                                {
+                                    try
+                                    {
+                                        var size = GetDirectorySize(path);
+                                        if (_dryRun)
+                                        {
+                                            LogDryRun($"Would delete directory: {path} ({FormatBytes(size)})");
+                                        }
+                                        else
+                                        {
+                                            Directory.Delete(path, true);
+                                        }
+                                        freedSpace += size;
+                                        clearedCount++;
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Adobe temp files in system temp
+            try
+            {
+                var tempPath = Path.GetTempPath();
+                if (Directory.Exists(tempPath))
+                {
+                    var adobeTempDirs = Directory.GetDirectories(tempPath, "Adobe*", SearchOption.TopDirectoryOnly);
+                    foreach (var dir in adobeTempDirs)
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(dir);
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete directory: {dir} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(dir, true);
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // 💻 JETBRAINS IDEs - Comprehensive cleanup
+            Console.WriteLine("  Cleaning JetBrains IDEs...");
+            
+            // JetBrains stores configs in user home
+            var jetBrainsBasePaths = new[]
+            {
+                Path.Combine(userProfile, ".IntelliJIdea*"),
+                Path.Combine(userProfile, ".PyCharm*"),
+                Path.Combine(userProfile, ".WebStorm*"),
+                Path.Combine(userProfile, ".PhpStorm*"),
+                Path.Combine(userProfile, ".RubyMine*"),
+                Path.Combine(userProfile, ".CLion*"),
+                Path.Combine(userProfile, ".GoLand*"),
+                Path.Combine(userProfile, ".Rider*"),
+                Path.Combine(userProfile, ".DataGrip*"),
+                Path.Combine(userProfile, ".RustRover*"),
+                Path.Combine(userProfile, ".AndroidStudio*"),
+                Path.Combine(userProfile, ".Fleet*"),
+                Path.Combine(userProfile, ".AppCode*"),
+                Path.Combine(localAppData, "JetBrains"),
+                Path.Combine(appData, "JetBrains")
+            };
+
+            foreach (var pattern in jetBrainsBasePaths)
+            {
+                if (pattern.Contains("*"))
+                {
+                    var parentDir = Path.GetDirectoryName(pattern);
+                    if (Directory.Exists(parentDir))
+                    {
+                        var matchPattern = Path.GetFileName(pattern);
+                        var dirs = Directory.GetDirectories(parentDir, matchPattern);
+                        
+                        foreach (var ideDir in dirs)
+                        {
+                            if (Directory.Exists(ideDir))
+                            {
+                                // Clean logs, cache, temp (preserve config, licenses, plugins settings)
+                                var cleanupSubdirs = new[] { "system/log", "system/caches", "system/tmp", "logs" };
+                                
+                                foreach (var subdir in cleanupSubdirs)
+                                {
+                                    var cleanupPath = Path.Combine(ideDir, subdir);
+                                    if (Directory.Exists(cleanupPath))
+                                    {
+                                        try
+                                        {
+                                            var size = GetDirectorySize(cleanupPath);
+                                            if (_dryRun)
+                                            {
+                                                LogDryRun($"Would delete directory: {cleanupPath} ({FormatBytes(size)})");
+                                            }
+                                            else
+                                            {
+                                                Directory.Delete(cleanupPath, true);
+                                            }
+                                            freedSpace += size;
+                                            clearedCount++;
+                                        }
+                                        catch { }
+                                    }
+                                }
+
+                                // Clean log files in system folder
+                                var systemFolder = Path.Combine(ideDir, "system");
+                                if (Directory.Exists(systemFolder))
+                                {
+                                    try
+                                    {
+                                        var logFiles = Directory.GetFiles(systemFolder, "*.log", SearchOption.AllDirectories);
+                                        foreach (var file in logFiles)
+                                        {
+                                            try
+                                            {
+                                                var fi = new FileInfo(file);
+                                                freedSpace += fi.Length;
+                                                if (_dryRun)
+                                                {
+                                                    LogDryRun($"Would delete file: {file}");
+                                                }
+                                                else
+                                                {
+                                                    fi.Delete();
+                                                }
+                                                clearedCount++;
+                                            }
+                                            catch { }
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (Directory.Exists(pattern))
+                {
+                    // JetBrains in AppData
+                    var toolboxLogs = Path.Combine(pattern, "Toolbox", "logs");
+                    if (Directory.Exists(toolboxLogs))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(toolboxLogs);
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete directory: {toolboxLogs} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(toolboxLogs, true);
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+
+                    // Clean IDE logs in JetBrains folder
+                    try
+                    {
+                        var logFiles = Directory.GetFiles(pattern, "*.log", SearchOption.AllDirectories);
+                        foreach (var file in logFiles)
+                        {
+                            try
+                            {
+                                var fi = new FileInfo(file);
+                                freedSpace += fi.Length;
+                                if (_dryRun)
+                                {
+                                    LogDryRun($"Would delete file: {file}");
+                                }
+                                else
+                                {
+                                    fi.Delete();
+                                }
+                                clearedCount++;
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            // JetBrains caches in system temp
+            try
+            {
+                var tempPath = Path.GetTempPath();
+                if (Directory.Exists(tempPath))
+                {
+                    var jetBrainsTempDirs = Directory.GetDirectories(tempPath, "jetbrains*", SearchOption.TopDirectoryOnly);
+                    foreach (var dir in jetBrainsTempDirs)
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(dir);
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete directory: {dir} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(dir, true);
+                            }
+                            freedSpace += size;
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} app-specific items ({FormatBytes(freedSpace)} freed)");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} app-specific items ({FormatBytes(freedSpace)} freed)");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -6018,7 +6427,7 @@ class WindowsCleanupTool
     static void ClearDetectedInstalledApps()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Scanning for all installed applications and clearing their logs/caches...");
+        Console.WriteLine("\n🔹 Scanning for all installed applications and clearing their logs/caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -6367,25 +6776,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} items from detected apps ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} items from detected apps ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} items from detected apps ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} items from detected apps ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No additional cache/log files found");
+                Console.WriteLine("  ⚠️ No additional cache/log files found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -6393,7 +6802,7 @@ class WindowsCleanupTool
     static void ClearAdditionalWindowsTraces()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing additional Windows traces...");
+        Console.WriteLine("\n🔹 Clearing additional Windows traces...");
         Console.ResetColor();
 
         LogDryRun("\n=== ADDITIONAL WINDOWS TRACES ===");
@@ -6607,13 +7016,13 @@ class WindowsCleanupTool
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} additional Windows traces ({FormatBytes(freedSpace)} freed)");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} additional Windows traces ({FormatBytes(freedSpace)} freed)");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -6621,7 +7030,7 @@ class WindowsCleanupTool
     static void ClearPowerToys()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing PowerToys logs and caches...");
+        Console.WriteLine("\n🔹 Clearing PowerToys logs and caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -6838,31 +7247,31 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} PowerToys items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} PowerToys items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} PowerToys items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} PowerToys items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else if (!foundAny)
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ PowerToys not detected on this system");
+                Console.WriteLine("  ⚠️ PowerToys not detected on this system");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No cached files found to clean");
+                Console.WriteLine("  ⚠️ No cached files found to clean");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -6870,7 +7279,7 @@ class WindowsCleanupTool
     static void ClearPrismCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Prism ARM to x86/x64 emulation cache...");
+        Console.WriteLine("\n🔹 Clearing Prism ARM to x86/x64 emulation cache...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -6938,11 +7347,11 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} Prism cache items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} Prism cache items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Prism cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Prism cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
                 Console.WriteLine("  ℹ Note: Prism will rebuild cache on next x86/x64 app launch (may take longer)");
@@ -6950,21 +7359,21 @@ class WindowsCleanupTool
             else if (!foundAny)
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ Prism cache not found");
+                Console.WriteLine("  ⚠️ Prism cache not found");
                 Console.WriteLine("  ℹ Note: Prism cache is typically only present if x86/x64 apps have been run on ARM64");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No cached files found to clean");
+                Console.WriteLine("  ⚠️ No cached files found to clean");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -6972,7 +7381,7 @@ class WindowsCleanupTool
     static void ClearDevelopmentToolCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing development tool caches and logs...");
+        Console.WriteLine("\n🔹 Clearing development tool caches and logs...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -7364,25 +7773,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} dev tool items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} dev tool items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} dev tool items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} dev tool items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No dev tool caches found");
+                Console.WriteLine("  ⚠️ No dev tool caches found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -7390,7 +7799,7 @@ class WindowsCleanupTool
     static void ClearProgrammingLanguageCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing programming language caches (Python, Rust, Java, etc.)...");
+        Console.WriteLine("\n🔹 Clearing programming language caches (Python, Rust, Java, etc.)...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -7822,20 +8231,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} programming language cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} programming language cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No programming language caches found");
+                Console.WriteLine("  ⚠️ No programming language caches found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -7843,7 +8252,7 @@ class WindowsCleanupTool
     static void ClearHyperVLogs()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Hyper-V logs and caches...");
+        Console.WriteLine("\n🔹 Clearing Hyper-V logs and caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -7915,25 +8324,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} Hyper-V log items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} Hyper-V log items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Hyper-V log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Hyper-V log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Hyper-V logs found (Hyper-V may not be installed)");
+                Console.WriteLine("  ⚠️ No Hyper-V logs found (Hyper-V may not be installed)");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -7941,7 +8350,7 @@ class WindowsCleanupTool
     static void ClearVirtualBoxData()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing VirtualBox logs and caches...");
+        Console.WriteLine("\n🔹 Clearing VirtualBox logs and caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -8021,20 +8430,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VirtualBox log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VirtualBox log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No VirtualBox logs found (VirtualBox may not be installed)");
+                Console.WriteLine("  ⚠️ No VirtualBox logs found (VirtualBox may not be installed)");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -8042,7 +8451,7 @@ class WindowsCleanupTool
     static void ClearVMwareData()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing VMware logs and caches...");
+        Console.WriteLine("\n🔹 Clearing VMware logs and caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -8132,20 +8541,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VMware log/cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} VMware log/cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No VMware logs found (VMware may not be installed)");
+                Console.WriteLine("  ⚠️ No VMware logs found (VMware may not be installed)");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -8153,7 +8562,7 @@ class WindowsCleanupTool
     static void ClearDeliveryOptimizationCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows Delivery Optimization cache...");
+        Console.WriteLine("\n🔹 Clearing Windows Delivery Optimization cache...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -8212,34 +8621,34 @@ class WindowsCleanupTool
                     if (freedSpace > 0)
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} Delivery Optimization cache ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                        Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} Delivery Optimization cache ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                         Console.ResetColor();
                     }
                 }
                 catch (UnauthorizedAccessException)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"  ✗ Access denied (requires administrator privileges)");
+                    Console.WriteLine($"  ❌ Access denied (requires administrator privileges)");
                     Console.ResetColor();
                 }
                 catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"  ✗ Failed: {ex.Message}");
+                    Console.WriteLine($"  ❌ Failed: {ex.Message}");
                     Console.ResetColor();
                 }
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ Delivery Optimization cache directory not found");
+                Console.WriteLine("  ⚠️ Delivery Optimization cache directory not found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -8247,7 +8656,7 @@ class WindowsCleanupTool
     static void ClearEventLogs()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows Event Logs...");
+        Console.WriteLine("\n🔹 Clearing Windows Event Logs...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -8258,7 +8667,7 @@ class WindowsCleanupTool
             if (!IsRunAsAdministrator())
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("  ✗ Requires administrator privileges to clear event logs");
+                Console.WriteLine("  ❌ Requires administrator privileges to clear event logs");
                 Console.ResetColor();
                 return;
             }
@@ -8299,7 +8708,7 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} event logs");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} event logs");
                 Console.ResetColor();
 
                 if (clearedLogs.Count > 0 && clearedLogs.Count <= 10)
@@ -8312,14 +8721,14 @@ class WindowsCleanupTool
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No event logs to clear");
+                Console.WriteLine("  ⚠️ No event logs to clear");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -8327,7 +8736,7 @@ class WindowsCleanupTool
     static void ClearGraphicsDriverCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing graphics driver caches and logs...");
+        Console.WriteLine("\n🔹 Clearing graphics driver caches and logs...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -8505,25 +8914,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} graphics driver items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} graphics driver items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} graphics driver items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} graphics driver items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No graphics driver caches found");
+                Console.WriteLine("  ⚠️ No graphics driver caches found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -8531,7 +8940,7 @@ class WindowsCleanupTool
     static void ClearWindowsSubsystems()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows subsystem logs and caches...");
+        Console.WriteLine("\n🔹 Clearing Windows subsystem logs and caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -8786,25 +9195,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} subsystem items ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} subsystem items ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} subsystem items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} subsystem items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No subsystem logs found");
+                Console.WriteLine("  ⚠️ No subsystem logs found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -8812,7 +9221,7 @@ class WindowsCleanupTool
     static void ClearDeepSystemCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing deep system caches...");
+        Console.WriteLine("\n🔹 Clearing deep system caches...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -9484,18 +9893,18 @@ class WindowsCleanupTool
             Console.ForegroundColor = ConsoleColor.Green;
             if (_dryRun)
             {
-                Console.WriteLine($"  ✓ Would clear {clearedCount} deep system cache items ({FormatBytes(freedSpace)} freed)");
+                Console.WriteLine($"  ✅ Would clear {clearedCount} deep system cache items ({FormatBytes(freedSpace)} freed)");
             }
             else
             {
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} deep system cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} deep system cache items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
             }
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -9503,7 +9912,7 @@ class WindowsCleanupTool
     static void ClearProgramFilesAppData()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Scanning Program Files for application logs and caches...");
+        Console.WriteLine("\n🔹 Scanning Program Files for application logs and caches...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -9640,25 +10049,25 @@ class WindowsCleanupTool
                 Console.ForegroundColor = ConsoleColor.Green;
                 if (_dryRun)
                 {
-                    Console.WriteLine($"  ✓ Would clear {clearedCount} files from {appsScanned} apps ({FormatBytes(freedSpace)} would be freed)");
+                    Console.WriteLine($"  ✅ Would clear {clearedCount} files from {appsScanned} apps ({FormatBytes(freedSpace)} would be freed)");
                 }
                 else
                 {
-                    Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} files from {appsScanned} apps ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                    Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} files from {appsScanned} apps ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 }
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine($"  ⚠ Scanned {appsScanned} apps, no cleanable files found");
+                Console.WriteLine($"  ⚠️ Scanned {appsScanned} apps, no cleanable files found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -9666,7 +10075,7 @@ class WindowsCleanupTool
     static void ClearSystemLogs()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing system logs and diagnostics...");
+        Console.WriteLine("\n🔹 Clearing system logs and diagnostics...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -9761,13 +10170,13 @@ class WindowsCleanupTool
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} system log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} system log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -9775,7 +10184,7 @@ class WindowsCleanupTool
     static void ClearWindowsUpdateCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows Update cache...");
+        Console.WriteLine("\n🔹 Clearing Windows Update cache...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -9839,7 +10248,7 @@ class WindowsCleanupTool
                     {
                         LogDryRun($"Would delete directory: {windowsOldPath}");
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ Would remove Windows.old folder");
+                        Console.WriteLine($"  ✅ Would remove Windows.old folder");
                         Console.ResetColor();
                     }
                     else
@@ -9848,7 +10257,7 @@ class WindowsCleanupTool
                         Directory.Delete(windowsOldPath, true);
                         freedSpace += size;
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ Removed Windows.old folder ({FormatBytes(size)})");
+                        Console.WriteLine($"  ✅ Removed Windows.old folder ({FormatBytes(size)})");
                         Console.ResetColor();
                     }
                     clearedCount++;
@@ -9856,7 +10265,7 @@ class WindowsCleanupTool
                 catch
                 {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine("  ⚠ Could not remove Windows.old (may require admin or Disk Cleanup)");
+                    Console.WriteLine("  ⚠️ Could not remove Windows.old (may require admin or Disk Cleanup)");
                     Console.ResetColor();
                 }
             }
@@ -9864,20 +10273,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} update cache items ({FormatBytes(freedSpace)} freed)");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} update cache items ({FormatBytes(freedSpace)} freed)");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No update cache items to clear");
+                Console.WriteLine("  ⚠️ No update cache items to clear");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -9885,7 +10294,7 @@ class WindowsCleanupTool
     static void ClearUserDocumentsFolders()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing specific folders from user Documents...");
+        Console.WriteLine("\n🔹 Clearing specific folders from user Documents...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -9964,7 +10373,7 @@ class WindowsCleanupTool
                                     else
                                     {
                                         Directory.Delete(folderPath, true);
-                                        Console.WriteLine($"  ✓ Deleted: {folderPath.Replace(usersPath, "C:\\Users")}");
+                                        Console.WriteLine($"  ✅ Deleted: {folderPath.Replace(usersPath, "C:\\Users")}");
                                     }
                                     
                                     freedSpace += size;
@@ -9973,7 +10382,7 @@ class WindowsCleanupTool
                                 catch (Exception ex)
                                 {
                                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                                    Console.WriteLine($"  ⚠ Could not delete {folderPath}: {ex.Message}");
+                                    Console.WriteLine($"  ⚠️ Could not delete {folderPath}: {ex.Message}");
                                     Console.ResetColor();
                                 }
                             }
@@ -9985,20 +10394,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would delete" : "Deleted")} {clearedCount} folders ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would delete" : "Deleted")} {clearedCount} folders ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No target folders found in user Documents");
+                Console.WriteLine("  ⚠️ No target folders found in user Documents");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -10006,7 +10415,7 @@ class WindowsCleanupTool
     static void ClearFfmpeg()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing ffmpeg logs and temp files...");
+        Console.WriteLine("\n🔹 Clearing ffmpeg logs and temp files...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -10099,20 +10508,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} ffmpeg temp/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} ffmpeg temp/log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No ffmpeg temp files found");
+                Console.WriteLine("  ⚠️ No ffmpeg temp files found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -10120,7 +10529,7 @@ class WindowsCleanupTool
     static void ClearRegistryTraces()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing registry traces...");
+        Console.WriteLine("\n🔹 Clearing registry traces...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -10768,13 +11177,13 @@ class WindowsCleanupTool
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} registry trace items");
+            Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} registry trace items");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -10782,7 +11191,7 @@ class WindowsCleanupTool
     static void ClearAdditionalRegistryTraces()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing additional registry user activity traces...");
+        Console.WriteLine("\n🔹 Clearing additional registry user activity traces...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -11049,20 +11458,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} additional trace categories");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} additional trace categories");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No additional traces found");
+                Console.WriteLine("  ⚠️ No additional traces found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -11070,7 +11479,7 @@ class WindowsCleanupTool
     static void ClearExpandedRegistryTraces()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing expanded registry activity traces...");
+        Console.WriteLine("\n🔹 Clearing expanded registry activity traces...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -11345,20 +11754,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} expanded registry trace categories");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} expanded registry trace categories");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No expanded registry traces found");
+                Console.WriteLine("  ⚠️ No expanded registry traces found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -11366,7 +11775,7 @@ class WindowsCleanupTool
     static void ClearWindowsFeedback()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows Feedback and Diagnostics data...");
+        Console.WriteLine("\n🔹 Clearing Windows Feedback and Diagnostics data...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -11458,20 +11867,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} feedback/diagnostic items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} feedback/diagnostic items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Windows Feedback data found");
+                Console.WriteLine("  ⚠️ No Windows Feedback data found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -11479,7 +11888,7 @@ class WindowsCleanupTool
     static void ClearOllama()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Ollama logs and cache...");
+        Console.WriteLine("\n🔹 Clearing Ollama logs and cache...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -11561,20 +11970,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Ollama log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Ollama log items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Ollama logs found (Ollama may not be installed)");
+                Console.WriteLine("  ⚠️ No Ollama logs found (Ollama may not be installed)");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -11582,7 +11991,7 @@ class WindowsCleanupTool
     static void ClearYtDlp()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing yt-dlp cache and history...");
+        Console.WriteLine("\n🔹 Clearing yt-dlp cache and history...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -11660,20 +12069,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} yt-dlp cache locations ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} yt-dlp cache locations ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No yt-dlp cache found");
+                Console.WriteLine("  ⚠️ No yt-dlp cache found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -11681,7 +12090,7 @@ class WindowsCleanupTool
     static void ClearSystemRestoreAndShadowCopies()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing System Restore points and Shadow Copies...");
+        Console.WriteLine("\n🔹 Clearing System Restore points and Shadow Copies...");
         Console.ResetColor();
 
         int clearedCount = 0;
@@ -11691,7 +12100,7 @@ class WindowsCleanupTool
             if (!IsRunAsAdministrator())
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("  ✗ Requires administrator privileges to delete restore points and shadow copies");
+                Console.WriteLine("  ❌ Requires administrator privileges to delete restore points and shadow copies");
                 Console.ResetColor();
                 return;
             }
@@ -11725,7 +12134,7 @@ class WindowsCleanupTool
                     if (vssProcess.ExitCode == 0)
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("  ✓ Shadow copies deleted");
+                        Console.WriteLine("  ✅ Shadow copies deleted");
                         Console.ResetColor();
                         clearedCount++;
                     }
@@ -11735,13 +12144,13 @@ class WindowsCleanupTool
                         if (string.IsNullOrEmpty(error) || error.Contains("No items found"))
                         {
                             Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.WriteLine("  ⚠ No shadow copies found");
+                            Console.WriteLine("  ⚠️ No shadow copies found");
                             Console.ResetColor();
                         }
                         else
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"  ⚠ Shadow copy deletion: {error.Trim()}");
+                            Console.WriteLine($"  ⚠️ Shadow copy deletion: {error.Trim()}");
                             Console.ResetColor();
                         }
                     }
@@ -11750,7 +12159,7 @@ class WindowsCleanupTool
                 {
                     LogDryRun("Would delete all Volume Shadow Copies (vssadmin delete shadows /all)");
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("  ✓ Would delete all shadow copies");
+                    Console.WriteLine("  ✅ Would delete all shadow copies");
                     Console.ResetColor();
                     clearedCount++;
                 }
@@ -11758,7 +12167,7 @@ class WindowsCleanupTool
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"  ✗ Shadow copy deletion failed: {ex.Message}");
+                Console.WriteLine($"  ❌ Shadow copy deletion failed: {ex.Message}");
                 Console.ResetColor();
             }
 
@@ -11810,21 +12219,21 @@ class WindowsCleanupTool
                     {
                         var countStr = output.Split(':')[1].Trim();
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ Deleted {countStr} restore point(s)");
+                        Console.WriteLine($"  ✅ Deleted {countStr} restore point(s)");
                         Console.ResetColor();
                         clearedCount++;
                     }
                     else if (output.Contains("NONE"))
                     {
                         Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.WriteLine("  ⚠ No restore points found");
+                        Console.WriteLine("  ⚠️ No restore points found");
                         Console.ResetColor();
                     }
                     else if (output.Contains("ERROR:"))
                     {
                         var error = output.Split(':')[1].Trim();
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"  ⚠ Restore point deletion: {error}");
+                        Console.WriteLine($"  ⚠️ Restore point deletion: {error}");
                         Console.ResetColor();
                     }
                 }
@@ -11832,7 +12241,7 @@ class WindowsCleanupTool
                 {
                     LogDryRun("Would delete all System Restore Points");
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("  ✓ Would delete all restore points");
+                    Console.WriteLine("  ✅ Would delete all restore points");
                     Console.ResetColor();
                     clearedCount++;
                 }
@@ -11840,7 +12249,7 @@ class WindowsCleanupTool
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"  ✗ Restore point deletion failed: {ex.Message}");
+                Console.WriteLine($"  ❌ Restore point deletion failed: {ex.Message}");
                 Console.ResetColor();
             }
 
@@ -11855,7 +12264,7 @@ class WindowsCleanupTool
                         var size = GetDirectorySize(windowsBackupPath);
                         Directory.Delete(windowsBackupPath, true);
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"  ✓ Cleared File History backup metadata ({FormatBytes(size)})");
+                        Console.WriteLine($"  ✅ Cleared File History backup metadata ({FormatBytes(size)})");
                         Console.ResetColor();
                         clearedCount++;
                     }
@@ -11863,7 +12272,7 @@ class WindowsCleanupTool
                     {
                         LogDryRun($"Would delete: {windowsBackupPath}");
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("  ✓ Would clear File History metadata");
+                        Console.WriteLine("  ✅ Would clear File History metadata");
                         Console.ResetColor();
                         clearedCount++;
                     }
@@ -11874,27 +12283,27 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} restore/shadow copy items");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} restore/shadow copy items");
                 Console.ResetColor();
                 
                 if (!_dryRun)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("  ⚠ Note: System Restore Points and Shadow Copies deleted. Previous file versions are no longer available.");
+                    Console.WriteLine("  ⚠️ Note: System Restore Points and Shadow Copies deleted. Previous file versions are no longer available.");
                     Console.ResetColor();
                 }
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No restore points or shadow copies to clear");
+                Console.WriteLine("  ⚠️ No restore points or shadow copies to clear");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -11902,7 +12311,7 @@ class WindowsCleanupTool
     static void ClearDeepSystemTraces()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing deep system activity traces...");
+        Console.WriteLine("\n🔹 Clearing deep system activity traces...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -12455,20 +12864,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} deep system trace items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} deep system trace items ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No deep system traces found");
+                Console.WriteLine("  ⚠️ No deep system traces found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -12476,7 +12885,7 @@ class WindowsCleanupTool
     static void ClearWindowsUpgradeFolders()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Clearing Windows upgrade temporary folders...");
+        Console.WriteLine("\n🔹 Clearing Windows upgrade temporary folders...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -12521,7 +12930,7 @@ class WindowsCleanupTool
                         if (!_dryRun)
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"  ⚠ {folder} requires elevated permissions (run as admin or use Disk Cleanup)");
+                            Console.WriteLine($"  ⚠️ {folder} requires elevated permissions (run as admin or use Disk Cleanup)");
                             Console.ResetColor();
                         }
                     }
@@ -12532,20 +12941,20 @@ class WindowsCleanupTool
             if (clearedCount > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Windows upgrade folders ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
+                Console.WriteLine($"  ✅ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} Windows upgrade folders ({FormatBytes(freedSpace)} {(_dryRun ? "would be freed" : "freed")})");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine("  ⚠ No Windows upgrade folders found");
+                Console.WriteLine("  ⚠️ No Windows upgrade folders found");
                 Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -12553,20 +12962,20 @@ class WindowsCleanupTool
     static void FlushDnsCache()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Flushing DNS cache...");
+        Console.WriteLine("\n🔹 Flushing DNS cache...");
         Console.ResetColor();
 
         try
         {
             RunCommand("ipconfig", "/flushdns");
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("  ✓ DNS cache flushed successfully");
+            Console.WriteLine("  ✅ DNS cache flushed successfully");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
@@ -12574,7 +12983,7 @@ class WindowsCleanupTool
     static void RunDiskCleanup()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n→ Running Windows Disk Cleanup...");
+        Console.WriteLine("\n🔹 Running Windows Disk Cleanup...");
         Console.ResetColor();
 
         try
@@ -12659,19 +13068,19 @@ class WindowsCleanupTool
                 if (completed && process.ExitCode == 0)
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("  ✓ Disk Cleanup completed successfully");
+                    Console.WriteLine("  ✅ Disk Cleanup completed successfully");
                     Console.ResetColor();
                 }
                 else if (!completed)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine("  ⚠ Disk Cleanup is taking longer than expected (still running in background)");
+                    Console.WriteLine("  ⚠️ Disk Cleanup is taking longer than expected (still running in background)");
                     Console.ResetColor();
                 }
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine($"  ⚠ Disk Cleanup completed with code: {process.ExitCode}");
+                    Console.WriteLine($"  ⚠️ Disk Cleanup completed with code: {process.ExitCode}");
                     Console.ResetColor();
                 }
             }
@@ -12679,13 +13088,13 @@ class WindowsCleanupTool
         catch (UnauthorizedAccessException)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("  ✗ Failed: Administrator privileges required to configure Disk Cleanup");
+            Console.WriteLine("  ❌ Failed: Administrator privileges required to configure Disk Cleanup");
             Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.WriteLine($"  ❌ Failed: {ex.Message}");
             Console.ResetColor();
         }
     }
