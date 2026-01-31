@@ -1371,65 +1371,203 @@ class WindowsCleanupTool
             {
                 Console.WriteLine($"  Cleaning {distro}...");
 
-                // Shell history files to delete
-                var historyFiles = new[]
+                // Get list of all users in the distro (run as root)
+                var getUsersCmd = new ProcessStartInfo
                 {
-                    "~/.bash_history",
-                    "~/.zsh_history",
-                    "~/.zsh_sessions",
-                    "~/.local/share/fish/fish_history",
-                    "~/.history",
-                    "~/.sh_history"
+                    FileName = "wsl",
+                    Arguments = $"-d {distro} --user root bash -c \"cut -d: -f1,6 /etc/passwd | grep -E '/home/'\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
                 };
 
-                foreach (var historyFile in historyFiles)
+                List<(string username, string homedir)> users = new List<(string, string)>();
+                
+                try
                 {
-                    try
+                    using var getUsersProcess = Process.Start(getUsersCmd);
+                    if (getUsersProcess != null)
                     {
-                        var deleteCmd = new ProcessStartInfo
+                        var usersOutput = getUsersProcess.StandardOutput.ReadToEnd();
+                        getUsersProcess.WaitForExit();
+                        
+                        if (getUsersProcess.ExitCode == 0 && !string.IsNullOrWhiteSpace(usersOutput))
                         {
-                            FileName = "wsl",
-                            Arguments = $"-d {distro} rm -f {historyFile} 2>/dev/null || true",
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true
-                        };
-
-                        if (_dryRun)
-                        {
-                            LogDryRun($"Would delete: {distro}:{historyFile}");
-                            clearedCount++;
-                        }
-                        else
-                        {
-                            using var deleteProcess = Process.Start(deleteCmd);
-                            if (deleteProcess != null)
+                            var userLines = usersOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var userLine in userLines)
                             {
-                                deleteProcess.WaitForExit();
-                                if (deleteProcess.ExitCode == 0)
+                                var parts = userLine.Split(':');
+                                if (parts.Length == 2)
                                 {
-                                    clearedCount++;
+                                    users.Add((parts[0].Trim(), parts[1].Trim()));
                                 }
                             }
                         }
                     }
-                    catch { /* Skip files that don't exist or can't be deleted */ }
+                }
+                catch { }
+
+                if (users.Count == 0)
+                {
+                    // Fallback to default user
+                    users.Add(("default", "~"));
                 }
 
-                // Clear common cache and temp directories
-                var dirsToClean = new[]
+                Console.WriteLine($"    Found {users.Count} user(s) in {distro}");
+
+                // Clean for each user
+                foreach (var (username, homedir) in users)
                 {
-                    "~/.cache",
-                    "~/tmp",
+                    // Shell history files to delete
+                    var historyFiles = new[]
+                    {
+                        $"{homedir}/.bash_history",
+                        $"{homedir}/.zsh_history",
+                        $"{homedir}/.zsh_sessions",
+                        $"{homedir}/.local/share/fish/fish_history",
+                        $"{homedir}/.history",
+                        $"{homedir}/.sh_history",
+                        $"{homedir}/.lesshst",
+                        $"{homedir}/.mysql_history",
+                        $"{homedir}/.psql_history",
+                        $"{homedir}/.sqlite_history",
+                        $"{homedir}/.python_history",
+                        $"{homedir}/.node_repl_history",
+                        $"{homedir}/.irb_history"
+                    };
+
+                    foreach (var historyFile in historyFiles)
+                    {
+                        try
+                        {
+                            var deleteCmd = new ProcessStartInfo
+                            {
+                                FileName = "wsl",
+                                Arguments = $"-d {distro} --user root bash -c \"rm -f {historyFile} 2>/dev/null || true\"",
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true
+                            };
+
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {distro}:{username}:{historyFile}");
+                                clearedCount++;
+                            }
+                            else
+                            {
+                                using var deleteProcess = Process.Start(deleteCmd);
+                                if (deleteProcess != null)
+                                {
+                                    deleteProcess.WaitForExit();
+                                    if (deleteProcess.ExitCode == 0)
+                                    {
+                                        clearedCount++;
+                                    }
+                                }
+                            }
+                        }
+                        catch { /* Skip files that don't exist or can't be deleted */ }
+                    }
+
+                    // Clear user-specific cache, tmp, and log directories
+                    var userDirsToClean = new[]
+                    {
+                        $"{homedir}/.cache",
+                        $"{homedir}/.tmp",
+                        $"{homedir}/tmp",
+                        $"{homedir}/.local/share/Trash",
+                        $"{homedir}/.thumbnails",
+                        $"{homedir}/.config/*/logs",
+                        $"{homedir}/.config/*/cache",
+                        $"{homedir}/.npm/_logs",
+                        $"{homedir}/.npm/_cacache",
+                        $"{homedir}/.yarn/cache",
+                        $"{homedir}/.cargo/registry/cache",
+                        $"{homedir}/.cargo/git/checkouts",
+                        $"{homedir}/.rustup/downloads",
+                        $"{homedir}/.m2/repository",
+                        $"{homedir}/.gradle/caches",
+                        $"{homedir}/.sbt/boot",
+                        $"{homedir}/.ivy2/cache"
+                    };
+
+                    foreach (var dirPath in userDirsToClean)
+                    {
+                        try
+                        {
+                            // Get size first (for display)
+                            var sizeCmd = new ProcessStartInfo
+                            {
+                                FileName = "wsl",
+                                Arguments = $"-d {distro} --user root bash -c \"du -sb {dirPath} 2>/dev/null | cut -f1 || echo 0\"",
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true
+                            };
+
+                            long dirSize = 0;
+                            try
+                            {
+                                using var sizeProcess = Process.Start(sizeCmd);
+                                if (sizeProcess != null)
+                                {
+                                    var sizeOutput = sizeProcess.StandardOutput.ReadToEnd().Trim();
+                                    sizeProcess.WaitForExit();
+                                    long.TryParse(sizeOutput, out dirSize);
+                                }
+                            }
+                            catch { }
+
+                            if (dirSize > 0)
+                            {
+                                var deleteCmd = new ProcessStartInfo
+                                {
+                                    FileName = "wsl",
+                                    Arguments = $"-d {distro} --user root bash -c \"rm -rf {dirPath} 2>/dev/null || true\"",
+                                    UseShellExecute = false,
+                                    CreateNoWindow = true,
+                                    RedirectStandardOutput = true,
+                                    RedirectStandardError = true
+                                };
+
+                                if (_dryRun)
+                                {
+                                    LogDryRun($"Would clean: {distro}:{username}:{dirPath} ({FormatBytes(dirSize)})");
+                                    clearedCount++;
+                                }
+                                else
+                                {
+                                    using var deleteProcess = Process.Start(deleteCmd);
+                                    if (deleteProcess != null)
+                                    {
+                                        deleteProcess.WaitForExit();
+                                        clearedCount++;
+                                    }
+                                }
+                                freedSpace += dirSize;
+                            }
+                        }
+                        catch { /* Skip directories that don't exist or can't be accessed */ }
+                    }
+                }
+
+                // Clear system-wide directories (run as root)
+                var systemDirsToClean = new[]
+                {
                     "/tmp",
                     "/var/tmp",
                     "/var/log",
-                    "~/.local/share/Trash",
-                    "~/.thumbnails"
+                    "/var/cache/apt/archives",
+                    "/var/cache/yum",
+                    "/var/cache/dnf",
+                    "/var/cache/pacman/pkg"
                 };
 
-                foreach (var dirPath in dirsToClean)
+                foreach (var dirPath in systemDirsToClean)
                 {
                     try
                     {
@@ -1437,7 +1575,7 @@ class WindowsCleanupTool
                         var sizeCmd = new ProcessStartInfo
                         {
                             FileName = "wsl",
-                            Arguments = $"-d {distro} bash -c \"du -sb {dirPath} 2>/dev/null | cut -f1 || echo 0\"",
+                            Arguments = $"-d {distro} --user root bash -c \"du -sb {dirPath} 2>/dev/null | cut -f1 || echo 0\"",
                             UseShellExecute = false,
                             CreateNoWindow = true,
                             RedirectStandardOutput = true,
@@ -1463,11 +1601,11 @@ class WindowsCleanupTool
                             string cleanCommand;
                             if (dirPath == "/var/log" || dirPath == "/tmp" || dirPath == "/var/tmp")
                             {
-                                cleanCommand = $"-d {distro} bash -c \"sudo find {dirPath} -type f -delete 2>/dev/null || true\"";
+                                cleanCommand = $"-d {distro} --user root bash -c \"find {dirPath} -type f -delete 2>/dev/null || true\"";
                             }
                             else
                             {
-                                cleanCommand = $"-d {distro} bash -c \"rm -rf {dirPath}/* 2>/dev/null || true\"";
+                                cleanCommand = $"-d {distro} --user root bash -c \"rm -rf {dirPath}/* 2>/dev/null || true\"";
                             }
 
                             var deleteCmd = new ProcessStartInfo
@@ -1482,7 +1620,7 @@ class WindowsCleanupTool
 
                             if (_dryRun)
                             {
-                                LogDryRun($"Would clean: {distro}:{dirPath} ({FormatBytes(dirSize)})");
+                                LogDryRun($"Would clean: {distro}:system:{dirPath} ({FormatBytes(dirSize)})");
                                 clearedCount++;
                             }
                             else
@@ -1500,13 +1638,14 @@ class WindowsCleanupTool
                     catch { /* Skip directories that don't exist or can't be accessed */ }
                 }
 
-                // Clear package manager caches
+                // Clear package manager caches (run as root)
                 var packageCacheCommands = new[]
                 {
-                    ("apt", "sudo apt-get clean 2>/dev/null || true"),
-                    ("yum", "sudo yum clean all 2>/dev/null || true"),
-                    ("dnf", "sudo dnf clean all 2>/dev/null || true"),
-                    ("zypper", "sudo zypper clean --all 2>/dev/null || true")
+                    ("apt", "apt-get clean 2>/dev/null || true"),
+                    ("yum", "yum clean all 2>/dev/null || true"),
+                    ("dnf", "dnf clean all 2>/dev/null || true"),
+                    ("zypper", "zypper clean --all 2>/dev/null || true"),
+                    ("pacman", "pacman -Scc --noconfirm 2>/dev/null || true")
                 };
 
                 foreach (var (manager, cleanCmd) in packageCacheCommands)
@@ -1516,7 +1655,7 @@ class WindowsCleanupTool
                         var cmd = new ProcessStartInfo
                         {
                             FileName = "wsl",
-                            Arguments = $"-d {distro} bash -c \"{cleanCmd}\"",
+                            Arguments = $"-d {distro} --user root bash -c \"{cleanCmd}\"",
                             UseShellExecute = false,
                             CreateNoWindow = true,
                             RedirectStandardOutput = true,
@@ -7799,7 +7938,7 @@ class WindowsCleanupTool
     static void ClearProgrammingLanguageCaches()
     {
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n🔹 Clearing programming language caches (Python, Rust, Java, etc.)...");
+        Console.WriteLine("\n🔹 Clearing programming language caches (20+ languages)...");
         Console.ResetColor();
 
         long freedSpace = 0;
@@ -8224,6 +8363,745 @@ class WindowsCleanupTool
                         clearedCount++;
                     }
                     catch { }
+                }
+
+                // Go build cache
+                var goBuildCache = Path.Combine(localAppData, "go-build");
+                if (Directory.Exists(goBuildCache))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(goBuildCache);
+                        freedSpace += size;
+                        
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {goBuildCache} ({FormatBytes(size)})");
+                        }
+                        else
+                        {
+                            Directory.Delete(goBuildCache, true);
+                        }
+                        clearedCount++;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            // .NET / C# caches
+            try
+            {
+                // NuGet package cache
+                var nugetCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "NuGet", "v3-cache"),
+                    Path.Combine(localAppData, "NuGet", "Cache"),
+                    Path.Combine(userProfile, ".nuget", "packages", ".tools")
+                };
+
+                foreach (var nugetCache in nugetCachePaths)
+                {
+                    if (Directory.Exists(nugetCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(nugetCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {nugetCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(nugetCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+
+                // .NET temp / build artifacts
+                var dotnetTempPaths = new[]
+                {
+                    Path.Combine(localAppData, "Temp", ".net"),
+                    Path.Combine(Path.GetTempPath(), ".dotnet"),
+                    Path.Combine(Path.GetTempPath(), "MSBuild")
+                };
+
+                foreach (var tempPath in dotnetTempPaths)
+                {
+                    if (Directory.Exists(tempPath))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(tempPath);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {tempPath} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(tempPath, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // C / C++ build caches
+            try
+            {
+                // ccache (C/C++ compiler cache)
+                var ccachePath = Path.Combine(userProfile, ".ccache");
+                if (Directory.Exists(ccachePath))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(ccachePath);
+                        freedSpace += size;
+                        
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {ccachePath} ({FormatBytes(size)})");
+                        }
+                        else
+                        {
+                            Directory.Delete(ccachePath, true);
+                        }
+                        clearedCount++;
+                    }
+                    catch { }
+                }
+
+                // CMake build cache
+                var cmakeCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".cmake", "packages"),
+                    Path.Combine(localAppData, "CMake", "Cache")
+                };
+
+                foreach (var cmakeCache in cmakeCachePaths)
+                {
+                    if (Directory.Exists(cmakeCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(cmakeCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {cmakeCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(cmakeCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+
+                // vcpkg (C++ package manager)
+                var vcpkgPaths = new[]
+                {
+                    Path.Combine(localAppData, "vcpkg", "archives"),
+                    Path.Combine(userProfile, ".vcpkg", "archives")
+                };
+
+                foreach (var vcpkgPath in vcpkgPaths)
+                {
+                    if (Directory.Exists(vcpkgPath))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(vcpkgPath);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {vcpkgPath} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(vcpkgPath, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+
+                // Conan (C++ package manager)
+                var conanCache = Path.Combine(userProfile, ".conan", "data");
+                if (Directory.Exists(conanCache))
+                {
+                    try
+                    {
+                        var size = GetDirectorySize(conanCache);
+                        freedSpace += size;
+                        
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {conanCache} ({FormatBytes(size)})");
+                        }
+                        else
+                        {
+                            Directory.Delete(conanCache, true);
+                        }
+                        clearedCount++;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            // TypeScript / Node.js additional caches
+            try
+            {
+                // TypeScript compiler cache
+                var tscCache = Path.Combine(userProfile, ".tsbuildinfo");
+                if (File.Exists(tscCache))
+                {
+                    try
+                    {
+                        var fi = new FileInfo(tscCache);
+                        freedSpace += fi.Length;
+                        
+                        if (_dryRun)
+                        {
+                            LogDryRun($"Would delete: {tscCache}");
+                        }
+                        else
+                        {
+                            fi.Delete();
+                        }
+                        clearedCount++;
+                    }
+                    catch { }
+                }
+
+                // yarn cache
+                var yarnCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "Yarn", "Cache"),
+                    Path.Combine(localAppData, "yarn-cache"),
+                    Path.Combine(userProfile, ".yarn", "cache")
+                };
+
+                foreach (var yarnCache in yarnCachePaths)
+                {
+                    if (Directory.Exists(yarnCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(yarnCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {yarnCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(yarnCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+
+                // pnpm cache
+                var pnpmCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "pnpm-cache"),
+                    Path.Combine(userProfile, ".pnpm-store")
+                };
+
+                foreach (var pnpmCache in pnpmCachePaths)
+                {
+                    if (Directory.Exists(pnpmCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(pnpmCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {pnpmCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(pnpmCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Kotlin caches
+            try
+            {
+                var kotlinCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".kotlin", "cache"),
+                    Path.Combine(localAppData, "kotlin")
+                };
+
+                foreach (var kotlinCache in kotlinCachePaths)
+                {
+                    if (Directory.Exists(kotlinCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(kotlinCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {kotlinCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(kotlinCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Scala caches (sbt already covered under Java)
+            try
+            {
+                var scalaCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".ivy2", "cache"),
+                    Path.Combine(userProfile, ".sbt", "boot", "scala-*", "org.scala-sbt", "sbt", "*", "cache"),
+                    Path.Combine(userProfile, ".coursier", "cache")
+                };
+
+                foreach (var scalaCache in scalaCachePaths)
+                {
+                    if (Directory.Exists(scalaCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(scalaCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {scalaCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(scalaCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Swift caches
+            try
+            {
+                var swiftCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "swiftpm", "cache"),
+                    Path.Combine(appData, "swiftpm", "cache"),
+                    Path.Combine(userProfile, ".swiftpm", "cache")
+                };
+
+                foreach (var swiftCache in swiftCachePaths)
+                {
+                    if (Directory.Exists(swiftCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(swiftCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {swiftCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(swiftCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // R caches
+            try
+            {
+                var rCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "R", "cache"),
+                    Path.Combine(userProfile, ".cache", "R"),
+                    Path.Combine(userProfile, ".Rcache")
+                };
+
+                foreach (var rCache in rCachePaths)
+                {
+                    if (Directory.Exists(rCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(rCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {rCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(rCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Julia caches
+            try
+            {
+                var juliaCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".julia", "compiled"),
+                    Path.Combine(userProfile, ".julia", "scratchspaces"),
+                    Path.Combine(userProfile, ".julia", "logs")
+                };
+
+                foreach (var juliaCache in juliaCachePaths)
+                {
+                    if (Directory.Exists(juliaCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(juliaCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {juliaCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(juliaCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Haskell caches (Stack & Cabal)
+            try
+            {
+                var haskellCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "Programs", "stack", "snapshots"),
+                    Path.Combine(appData, "stack", "snapshots"),
+                    Path.Combine(appData, "cabal", "packages"),
+                    Path.Combine(userProfile, ".stack", "snapshots"),
+                    Path.Combine(userProfile, ".cabal", "packages")
+                };
+
+                foreach (var haskellCache in haskellCachePaths)
+                {
+                    if (Directory.Exists(haskellCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(haskellCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {haskellCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(haskellCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Elixir caches (Mix & Hex)
+            try
+            {
+                var elixirCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".hex", "cache"),
+                    Path.Combine(userProfile, ".mix", "archives")
+                };
+
+                foreach (var elixirCache in elixirCachePaths)
+                {
+                    if (Directory.Exists(elixirCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(elixirCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {elixirCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(elixirCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Lua caches (LuaRocks)
+            try
+            {
+                var luaCachePaths = new[]
+                {
+                    Path.Combine(appData, "luarocks", "cache"),
+                    Path.Combine(userProfile, ".cache", "luarocks")
+                };
+
+                foreach (var luaCache in luaCachePaths)
+                {
+                    if (Directory.Exists(luaCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(luaCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {luaCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(luaCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Dart / Flutter caches
+            try
+            {
+                var dartCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "Pub", "Cache"),
+                    Path.Combine(appData, "Pub", "Cache"),
+                    Path.Combine(userProfile, ".pub-cache"),
+                    Path.Combine(userProfile, ".dart", "cache"),
+                    Path.Combine(userProfile, ".flutter", "cache")
+                };
+
+                foreach (var dartCache in dartCachePaths)
+                {
+                    if (Directory.Exists(dartCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(dartCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {dartCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(dartCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Clojure caches (Leiningen & Clojure CLI)
+            try
+            {
+                var clojureCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".lein", "cache"),
+                    Path.Combine(userProfile, ".m2", "repository", "org", "clojure"),
+                    Path.Combine(userProfile, ".clojure", ".cpcache")
+                };
+
+                foreach (var clojureCache in clojureCachePaths)
+                {
+                    if (Directory.Exists(clojureCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(clojureCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {clojureCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(clojureCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // F# caches
+            try
+            {
+                var fsharpCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "FSI-ASSEMBLY-CACHE"),
+                    Path.Combine(appData, ".fsharp", "cache")
+                };
+
+                foreach (var fsharpCache in fsharpCachePaths)
+                {
+                    if (Directory.Exists(fsharpCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(fsharpCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {fsharpCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(fsharpCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // Zig caches
+            try
+            {
+                var zigCachePaths = new[]
+                {
+                    Path.Combine(localAppData, "zig"),
+                    Path.Combine(userProfile, ".cache", "zig")
+                };
+
+                foreach (var zigCache in zigCachePaths)
+                {
+                    if (Directory.Exists(zigCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(zigCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {zigCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(zigCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // OCaml caches (opam)
+            try
+            {
+                var ocamlCachePaths = new[]
+                {
+                    Path.Combine(userProfile, ".opam", "download-cache"),
+                    Path.Combine(userProfile, ".opam", "log")
+                };
+
+                foreach (var ocamlCache in ocamlCachePaths)
+                {
+                    if (Directory.Exists(ocamlCache))
+                    {
+                        try
+                        {
+                            var size = GetDirectorySize(ocamlCache);
+                            freedSpace += size;
+                            
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete: {ocamlCache} ({FormatBytes(size)})");
+                            }
+                            else
+                            {
+                                Directory.Delete(ocamlCache, true);
+                            }
+                            clearedCount++;
+                        }
+                        catch { }
+                    }
                 }
             }
             catch { }
