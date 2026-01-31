@@ -155,7 +155,9 @@ class WindowsCleanupTool
             ClearFfmpeg();
             ClearRegistryTraces();
             ClearAdditionalRegistryTraces();
+            ClearExpandedRegistryTraces();
             ClearDeepSystemTraces();
+            ClearSystemRestoreAndShadowCopies();
             FlushDnsCache();
             RunDiskCleanup();
 
@@ -652,18 +654,33 @@ class WindowsCleanupTool
             { "Edge Beta", new[] { Path.Combine(localAppData, "Microsoft", "Edge Beta", "User Data") } },
             { "Edge Canary", new[] { Path.Combine(localAppData, "Microsoft", "Edge SxS", "User Data") } },
             
-            // Chrome - will scan all profiles
+            // Chrome - all channels
             { "Chrome", new[] { Path.Combine(localAppData, "Google", "Chrome", "User Data") } },
+            { "Chrome Beta", new[] { Path.Combine(localAppData, "Google", "Chrome Beta", "User Data") } },
+            { "Chrome Dev", new[] { Path.Combine(localAppData, "Google", "Chrome Dev", "User Data") } },
+            { "Chrome Canary", new[] { Path.Combine(localAppData, "Google", "Chrome SxS", "User Data") } },
             
-            // Brave
+            // Brave - all channels
             { "Brave", new[] { Path.Combine(localAppData, "BraveSoftware", "Brave-Browser", "User Data") } },
+            { "Brave Beta", new[] { Path.Combine(localAppData, "BraveSoftware", "Brave-Browser-Beta", "User Data") } },
+            { "Brave Dev", new[] { Path.Combine(localAppData, "BraveSoftware", "Brave-Browser-Dev", "User Data") } },
+            { "Brave Nightly", new[] { Path.Combine(localAppData, "BraveSoftware", "Brave-Browser-Nightly", "User Data") } },
             
-            // Opera
+            // Opera - all channels
             { "Opera", new[] { Path.Combine(appData, "Opera Software", "Opera Stable") } },
+            { "Opera Beta", new[] { Path.Combine(appData, "Opera Software", "Opera Beta") } },
+            { "Opera Developer", new[] { Path.Combine(appData, "Opera Software", "Opera Developer") } },
             { "Opera GX", new[] { Path.Combine(appData, "Opera Software", "Opera GX Stable") } },
             
-            // Vivaldi
-            { "Vivaldi", new[] { Path.Combine(localAppData, "Vivaldi", "User Data") } }
+            // Vivaldi - all channels
+            { "Vivaldi", new[] { Path.Combine(localAppData, "Vivaldi", "User Data") } },
+            { "Vivaldi Snapshot", new[] { Path.Combine(localAppData, "Vivaldi Snapshot", "User Data") } },
+            
+            // Firefox - all channels
+            { "Firefox", new[] { Path.Combine(appData, "Mozilla", "Firefox", "Profiles") } },
+            { "Firefox Beta", new[] { Path.Combine(appData, "Mozilla", "Firefox Beta", "Profiles") } },
+            { "Firefox Developer Edition", new[] { Path.Combine(appData, "Mozilla", "Firefox Developer Edition", "Profiles") } },
+            { "Firefox Nightly", new[] { Path.Combine(appData, "Mozilla", "Firefox Nightly", "Profiles") } }
         };
 
         var chromiumCacheSubfolders = new[] { "Cache", "Code Cache", "GPUCache", "Service Worker", "Storage" };
@@ -11050,6 +11067,302 @@ class WindowsCleanupTool
         }
     }
 
+    static void ClearExpandedRegistryTraces()
+    {
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("\n→ Clearing expanded registry activity traces...");
+        Console.ResetColor();
+
+        int clearedCount = 0;
+
+        try
+        {
+            LogDryRun("\n=== EXPANDED REGISTRY TRACES ===");
+
+            // Map Network Drive MRU
+            try
+            {
+                var mapDriveMRU = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Map Network Drive MRU";
+                using var key = Registry.CurrentUser.OpenSubKey(mapDriveMRU, true);
+                if (key != null)
+                {
+                    var valueNames = key.GetValueNames();
+                    foreach (var valueName in valueNames)
+                    {
+                        if (valueName != "MRUList" && valueName != "")
+                        {
+                            try
+                            {
+                                if (_dryRun)
+                                {
+                                    LogDryRun($"Would delete registry value: {mapDriveMRU}\\{valueName}");
+                                }
+                                else
+                                {
+                                    key.DeleteValue(valueName);
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    
+                    if (key.GetValue("MRUList") != null)
+                    {
+                        if (!_dryRun)
+                        {
+                            key.SetValue("MRUList", "");
+                        }
+                        else
+                        {
+                            LogDryRun($"Would delete registry value: {mapDriveMRU}\\MRUList");
+                        }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // Explorer Feature Usage (tracks which features used)
+            try
+            {
+                var featureUsagePath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage";
+                using var key = Registry.CurrentUser.OpenSubKey(featureUsagePath, true);
+                if (key != null)
+                {
+                    var subKeyNames = key.GetSubKeyNames();
+                    foreach (var subKeyName in subKeyNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry subkey: {featureUsagePath}\\{subKeyName}");
+                            }
+                            else
+                            {
+                                key.DeleteSubKeyTree(subKeyName, false);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // Windows Search Recent Apps
+            try
+            {
+                var searchRecentApps = @"Software\Microsoft\Windows\CurrentVersion\Search\RecentApps";
+                using var key = Registry.CurrentUser.OpenSubKey(searchRecentApps, true);
+                if (key != null)
+                {
+                    var subKeyNames = key.GetSubKeyNames();
+                    foreach (var subKeyName in subKeyNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry subkey: {searchRecentApps}\\{subKeyName}");
+                            }
+                            else
+                            {
+                                key.DeleteSubKeyTree(subKeyName, false);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // Program Compatibility Assistant Store
+            try
+            {
+                var pcaStore = @"Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store";
+                using var key = Registry.CurrentUser.OpenSubKey(pcaStore, true);
+                if (key != null)
+                {
+                    var valueNames = key.GetValueNames();
+                    foreach (var valueName in valueNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry value: {pcaStore}\\{valueName}");
+                            }
+                            else
+                            {
+                                key.DeleteValue(valueName);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // Terminal Server Client (RDP) history
+            try
+            {
+                var rdpDefault = @"Software\Microsoft\Terminal Server Client\Default";
+                using var key = Registry.CurrentUser.OpenSubKey(rdpDefault, true);
+                if (key != null)
+                {
+                    var valueNames = key.GetValueNames();
+                    foreach (var valueName in valueNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry value: {rdpDefault}\\{valueName}");
+                            }
+                            else
+                            {
+                                key.DeleteValue(valueName);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+
+                // Servers list
+                var rdpServers = @"Software\Microsoft\Terminal Server Client\Servers";
+                using var serversKey = Registry.CurrentUser.OpenSubKey(rdpServers, true);
+                if (serversKey != null)
+                {
+                    var subKeyNames = serversKey.GetSubKeyNames();
+                    foreach (var subKeyName in subKeyNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry subkey: {rdpServers}\\{subKeyName}");
+                            }
+                            else
+                            {
+                                serversKey.DeleteSubKeyTree(subKeyName, false);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // User File History (UFH/SHC)
+            try
+            {
+                var ufhPath = @"Software\Microsoft\Windows\CurrentVersion\UFH\SHC";
+                using var key = Registry.CurrentUser.OpenSubKey(ufhPath, true);
+                if (key != null)
+                {
+                    var valueNames = key.GetValueNames();
+                    foreach (var valueName in valueNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry value: {ufhPath}\\{valueName}");
+                            }
+                            else
+                            {
+                                key.DeleteValue(valueName);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // MUICache in Classes (tracks executable names)
+            try
+            {
+                var muiCachePath = @"Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache";
+                using var key = Registry.CurrentUser.OpenSubKey(muiCachePath, true);
+                if (key != null)
+                {
+                    var valueNames = key.GetValueNames();
+                    foreach (var valueName in valueNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry value: {muiCachePath}\\{valueName}");
+                            }
+                            else
+                            {
+                                key.DeleteValue(valueName);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            // AppKey tracking
+            try
+            {
+                var appKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\AppKey";
+                using var key = Registry.CurrentUser.OpenSubKey(appKeyPath, true);
+                if (key != null)
+                {
+                    var subKeyNames = key.GetSubKeyNames();
+                    foreach (var subKeyName in subKeyNames)
+                    {
+                        try
+                        {
+                            if (_dryRun)
+                            {
+                                LogDryRun($"Would delete registry subkey: {appKeyPath}\\{subKeyName}");
+                            }
+                            else
+                            {
+                                key.DeleteSubKeyTree(subKeyName, false);
+                            }
+                        }
+                        catch { }
+                    }
+                    clearedCount++;
+                }
+            }
+            catch { }
+
+            if (clearedCount > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} expanded registry trace categories");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine("  ⚠ No expanded registry traces found");
+                Console.ResetColor();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.ResetColor();
+        }
+    }
+
     static void ClearWindowsFeedback()
     {
         Console.ForegroundColor = ConsoleColor.White;
@@ -11354,6 +11667,227 @@ class WindowsCleanupTool
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine("  ⚠ No yt-dlp cache found");
+                Console.ResetColor();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"  ✗ Failed: {ex.Message}");
+            Console.ResetColor();
+        }
+    }
+
+    static void ClearSystemRestoreAndShadowCopies()
+    {
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("\n→ Clearing System Restore points and Shadow Copies...");
+        Console.ResetColor();
+
+        int clearedCount = 0;
+
+        try
+        {
+            if (!IsRunAsAdministrator())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("  ✗ Requires administrator privileges to delete restore points and shadow copies");
+                Console.ResetColor();
+                return;
+            }
+
+            LogDryRun("\n=== SYSTEM RESTORE & SHADOW COPIES ===");
+
+            // Delete all Shadow Copies (Volume Shadow Copy Service snapshots)
+            // These contain previous versions of files and can reveal user activity
+            try
+            {
+                Console.WriteLine("  Deleting Volume Shadow Copies...");
+                
+                if (!_dryRun)
+                {
+                    var vssProcess = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = "vssadmin.exe",
+                            Arguments = "delete shadows /all /quiet",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        }
+                    };
+                    
+                    vssProcess.Start();
+                    vssProcess.WaitForExit(30000); // 30 second timeout
+                    
+                    if (vssProcess.ExitCode == 0)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("  ✓ Shadow copies deleted");
+                        Console.ResetColor();
+                        clearedCount++;
+                    }
+                    else
+                    {
+                        var error = vssProcess.StandardError.ReadToEnd();
+                        if (string.IsNullOrEmpty(error) || error.Contains("No items found"))
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.WriteLine("  ⚠ No shadow copies found");
+                            Console.ResetColor();
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine($"  ⚠ Shadow copy deletion: {error.Trim()}");
+                            Console.ResetColor();
+                        }
+                    }
+                }
+                else
+                {
+                    LogDryRun("Would delete all Volume Shadow Copies (vssadmin delete shadows /all)");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("  ✓ Would delete all shadow copies");
+                    Console.ResetColor();
+                    clearedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"  ✗ Shadow copy deletion failed: {ex.Message}");
+                Console.ResetColor();
+            }
+
+            // Delete all System Restore Points
+            // These contain system state and can include user files
+            try
+            {
+                Console.WriteLine("  Deleting System Restore Points...");
+                
+                if (!_dryRun)
+                {
+                    // Use PowerShell to get and delete restore points
+                    var psScript = @"
+                        try {
+                            $restorePoints = Get-ComputerRestorePoint -ErrorAction Stop
+                            if ($restorePoints) {
+                                $count = $restorePoints.Count
+                                # Delete all restore points using WMI
+                                $result = (Get-WmiObject -Namespace 'root\default' -Class SystemRestore).Disable($env:SystemDrive)
+                                Start-Sleep -Seconds 1
+                                (Get-WmiObject -Namespace 'root\default' -Class SystemRestore).Enable($env:SystemDrive)
+                                Write-Output ""DELETED:$count""
+                            } else {
+                                Write-Output ""NONE""
+                            }
+                        } catch {
+                            Write-Output ""ERROR:$($_.Exception.Message)""
+                        }
+                    ";
+
+                    var psProcess = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = "powershell.exe",
+                            Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        }
+                    };
+                    
+                    psProcess.Start();
+                    var output = psProcess.StandardOutput.ReadToEnd();
+                    psProcess.WaitForExit(30000);
+                    
+                    if (output.Contains("DELETED:"))
+                    {
+                        var countStr = output.Split(':')[1].Trim();
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"  ✓ Deleted {countStr} restore point(s)");
+                        Console.ResetColor();
+                        clearedCount++;
+                    }
+                    else if (output.Contains("NONE"))
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.WriteLine("  ⚠ No restore points found");
+                        Console.ResetColor();
+                    }
+                    else if (output.Contains("ERROR:"))
+                    {
+                        var error = output.Split(':')[1].Trim();
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"  ⚠ Restore point deletion: {error}");
+                        Console.ResetColor();
+                    }
+                }
+                else
+                {
+                    LogDryRun("Would delete all System Restore Points");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("  ✓ Would delete all restore points");
+                    Console.ResetColor();
+                    clearedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"  ✗ Restore point deletion failed: {ex.Message}");
+                Console.ResetColor();
+            }
+
+            // Also try to clear Windows Backup shadow copies (if Windows Backup is used)
+            try
+            {
+                var windowsBackupPath = @"C:\Windows\System32\config\systemprofile\AppData\Local\Microsoft\Windows\FileHistory";
+                if (Directory.Exists(windowsBackupPath))
+                {
+                    if (!_dryRun)
+                    {
+                        var size = GetDirectorySize(windowsBackupPath);
+                        Directory.Delete(windowsBackupPath, true);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"  ✓ Cleared File History backup metadata ({FormatBytes(size)})");
+                        Console.ResetColor();
+                        clearedCount++;
+                    }
+                    else
+                    {
+                        LogDryRun($"Would delete: {windowsBackupPath}");
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("  ✓ Would clear File History metadata");
+                        Console.ResetColor();
+                        clearedCount++;
+                    }
+                }
+            }
+            catch { }
+
+            if (clearedCount > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"  ✓ {(_dryRun ? "Would clear" : "Cleared")} {clearedCount} restore/shadow copy items");
+                Console.ResetColor();
+                
+                if (!_dryRun)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("  ⚠ Note: System Restore Points and Shadow Copies deleted. Previous file versions are no longer available.");
+                    Console.ResetColor();
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine("  ⚠ No restore points or shadow copies to clear");
                 Console.ResetColor();
             }
         }
